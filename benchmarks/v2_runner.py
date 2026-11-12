@@ -195,6 +195,14 @@ def estimate_cost_from_catalog(
     completion_tokens = _decimal(usage.get("completion_tokens"))
     if None in (prompt_price, completion_price, prompt_tokens, completion_tokens):
         return None
+    # Do not understate budget when model-specific charges need additional usage
+    # dimensions that this simple token estimator does not currently account for.
+    extra_charge_fields = (
+        "request", "image", "web_search", "internal_reasoning",
+        "input_cache_read", "input_cache_write",
+    )
+    if any((_decimal(pricing.get(field)) or Decimal("0")) > 0 for field in extra_charge_fields):
+        return None
     return float(prompt_price * prompt_tokens + completion_price * completion_tokens)
 
 
