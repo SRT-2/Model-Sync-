@@ -20,21 +20,21 @@
     "expected_unique_prompts": true
   },
   "models": {
-    "classifier": "",
-    "coding": "",
-    "unit_testing": "",
-    "reasoning": "",
-    "baseline": ""
+    "classifier": "z-ai/glm-5.3-flash",
+    "coding": "z-ai/glm-5.3-flash",
+    "unit_testing": "deepseek/deepseek-v4-flash-0731",
+    "reasoning": "openai/gpt-5.6-luna",
+    "baseline": "anthropic/claude-sonnet-5"
   },
   "generation": {
-    "temperature": 0.0,
+    "temperature": 0,
     "max_output_tokens": 500,
-    "classifier_temperature": 0.0,
+    "classifier_temperature": 0,
     "classifier_max_output_tokens": 20,
     "include_usage": true
   },
   "execution": {
-    "default_max_cost_usd": 1.0,
+    "default_max_cost_usd": 1,
     "delay_between_prompts_seconds": 0.5,
     "streaming_for_cost_comparison": false,
     "response_quality_scoring": false
