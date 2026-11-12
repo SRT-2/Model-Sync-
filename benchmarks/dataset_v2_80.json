@@ -189,396 +189,6 @@
     "reference_solution": "from pathlib import Path\nimport json\ndef find_active_records(root_dir: str):\n    for path in Path(root_dir).rglob('*.json'):\n        try:\n            with path.open('r', encoding='utf-8') as f:\n                data = json.load(f)\n                if isinstance(data, list):\n                    for item in data:\n                        if item.get('status') == 'active': yield item\n                elif isinstance(data, dict) and data.get('status') == 'active':\n                    yield data\n        except (json.JSONDecodeError, OSError):\n            continue"
   },
   {
-    "id": "TESTING_01",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Write a complete pytest test suite for a user registration validator `validate_user(username: str, email: str, age: int) -> tuple[bool, str]`. Cover valid inputs, username under 3 characters, invalid email without '@', and age under 18.",
-    "evaluation_type": "rubric",
-    "description": "Pytest suite for input validator",
-    "rubric": {
-      "required_elements": [
-        "def test_",
-        "assert",
-        "@pytest.mark.parametrize",
-        "validate_user"
-      ],
-      "criteria": "Provides structured pytest tests with assertions checking both boolean success and specific error messages.",
-      "max_score": 10
-    },
-    "reference_solution": "import pytest\ndef test_valid_user():\n    ok, msg = validate_user('alice', 'alice@example.com', 25)\n    assert ok is True\n    assert msg == ''\n\ndef test_short_username():\n    ok, msg = validate_user('al', 'al@example.com', 25)\n    assert ok is False\n    assert 'username' in msg.lower()\n\ndef test_invalid_email():\n    ok, msg = validate_user('alice', 'invalid-email', 25)\n    assert ok is False\n    assert 'email' in msg.lower()\n\ndef test_underage():\n    ok, msg = validate_user('alice', 'alice@example.com', 17)\n    assert ok is False\n    assert 'age' in msg.lower()"
-  },
-  {
-    "id": "TESTING_02",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Write pytest unit tests using `unittest.mock.patch` to mock an external payment gateway `PaymentClient.charge(card_token, amount)`. Test two cases: (1) successful charge returning transaction ID, and (2) payment failure throwing `PaymentDeclinedError`.",
-    "evaluation_type": "rubric",
-    "description": "Mocking external payment gateway with unittest.mock",
-    "rubric": {
-      "required_elements": [
-        "patch",
-        "test_",
-        "assert",
-        "pytest.raises"
-      ],
-      "criteria": "Uses unittest.mock.patch to mock PaymentClient.charge, asserts return value and mock called_once_with.",
-      "max_score": 10
-    },
-    "reference_solution": "from unittest.mock import patch, MagicMock\nimport pytest\n@patch('app.payment.PaymentClient.charge')\ndef test_payment_success(mock_charge):\n    mock_charge.return_value = {'tx_id': 'tx_123', 'status': 'success'}\n    res = process_payment('tok_abc', 5000)\n    assert res['tx_id'] == 'tx_123'\n    mock_charge.assert_called_once_with('tok_abc', 5000)\n\n@patch('app.payment.PaymentClient.charge')\ndef test_payment_declined(mock_charge):\n    mock_charge.side_effect = PaymentDeclinedError('Insufficient funds')\n    with pytest.raises(PaymentDeclinedError):\n        process_payment('tok_abc', 5000)"
-  },
-  {
-    "id": "TESTING_03",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Create a pytest test suite with pytest fixtures (`@pytest.fixture`) for an in-memory SQLite database connection. Write unit tests testing creating a table, inserting a record, and querying that record.",
-    "evaluation_type": "rubric",
-    "description": "Pytest fixture for SQLite and CRUD tests",
-    "rubric": {
-      "required_elements": [
-        "@pytest.fixture",
-        "sqlite3.connect",
-        "yield",
-        "cursor",
-        "assert"
-      ],
-      "criteria": "Defines fixture yielding SQLite in-memory connection and closing it, with test asserting table creation and record query.",
-      "max_score": 10
-    },
-    "reference_solution": "import pytest, sqlite3\n@pytest.fixture\ndef db_conn():\n    conn = sqlite3.connect(':memory:')\n    yield conn\n    conn.close()\n\ndef test_create_and_query(db_conn):\n    cur = db_conn.cursor()\n    cur.execute('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)')\n    cur.execute('INSERT INTO users (name) VALUES (?)', ('Alice',))\n    db_conn.commit()\n    cur.execute('SELECT name FROM users WHERE id = 1')\n    row = cur.fetchone()\n    assert row[0] == 'Alice'"
-  },
-  {
-    "id": "TESTING_04",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Write unit test cases using Jest for a JavaScript utility function `formatCurrency(amount, currencyCode)` covering positive amount, zero amount, negative amount, and unsupported currency code throwing an Error.",
-    "evaluation_type": "rubric",
-    "description": "Jest unit test suite for currency formatter",
-    "rubric": {
-      "required_elements": [
-        "describe",
-        "test",
-        "expect",
-        "toThrow"
-      ],
-      "criteria": "Uses standard Jest describe/test/it syntax with expect assertions for values and thrown exceptions.",
-      "max_score": 10
-    },
-    "reference_solution": "describe('formatCurrency', () => {\n  test('formats positive USD', () => {\n    expect(formatCurrency(12.5, 'USD')).toBe('$12.50');\n  });\n  test('formats zero', () => {\n    expect(formatCurrency(0, 'USD')).toBe('$0.00');\n  });\n  test('formats negative amount', () => {\n    expect(formatCurrency(-5.0, 'USD')).toBe('-$5.00');\n  });\n  test('throws on unsupported currency', () => {\n    expect(() => formatCurrency(10, 'XYZ')).toThrow('Unsupported currency');\n  });\n});"
-  },
-  {
-    "id": "TESTING_05",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Write parametrized pytest test cases (`@pytest.mark.parametrize`) testing boundary conditions and leap year rules for `is_leap_year(year: int) -> bool`. Include years: 2000 (leap), 1900 (not leap), 2024 (leap), 2023 (not leap), and 1600 (leap).",
-    "evaluation_type": "rubric",
-    "description": "Parametrized pytest tests for leap year rules",
-    "rubric": {
-      "required_elements": [
-        "@pytest.mark.parametrize",
-        "assert is_leap_year",
-        "2000",
-        "1900"
-      ],
-      "criteria": "Uses pytest.mark.parametrize with exact leap year test pairs (2000 True, 1900 False, 2024 True, 2023 False, 1600 True).",
-      "max_score": 10
-    },
-    "reference_solution": "import pytest\n@pytest.mark.parametrize('year,expected', [\n    (2000, True),\n    (1900, False),\n    (2024, True),\n    (2023, False),\n    (1600, True),\n])\ndef test_is_leap_year(year, expected):\n    assert is_leap_year(year) == expected"
-  },
-  {
-    "id": "TESTING_06",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Write unit test cases using FastAPI `TestClient` to verify an API endpoint `/api/items`: test 200 OK with valid JSON payload, 422 Unprocessable Entity when required field `name` is missing, and 401 Unauthorized when Bearer token header is absent.",
-    "evaluation_type": "rubric",
-    "description": "FastAPI TestClient endpoint tests",
-    "rubric": {
-      "required_elements": [
-        "TestClient",
-        "client.post",
-        "status_code == 200",
-        "status_code == 422",
-        "status_code == 401"
-      ],
-      "criteria": "Tests status codes 200, 422, and 401 with appropriate request headers and payloads.",
-      "max_score": 10
-    },
-    "reference_solution": "from fastapi.testclient import TestClient\nfrom app.main import app\nclient = TestClient(app)\ndef test_create_item_success():\n    r = client.post('/api/items', json={'name': 'Item1'}, headers={'Authorization': 'Bearer test-token'})\n    assert r.status_code == 200\ndef test_create_item_missing_name():\n    r = client.post('/api/items', json={}, headers={'Authorization': 'Bearer test-token'})\n    assert r.status_code == 422\ndef test_create_item_unauthorized():\n    r = client.post('/api/items', json={'name': 'Item1'})\n    assert r.status_code == 401"
-  },
-  {
-    "id": "TESTING_07",
-    "category": "UNIT_TESTING",
-    "difficulty": "clear",
-    "prompt": "Construct a unit test suite specifically focused on edge cases and defect detection for a binary search function `binary_search(arr, target)`. Test: empty array, single-element array (present and absent), target at first index, target at last index, duplicate elements, and even/odd length arrays.",
-    "evaluation_type": "rubric",
-    "description": "Edge-case defect detection tests for binary search",
-    "rubric": {
-      "required_elements": [
-        "def test_",
-        "assert",
-        "[]",
-        "target"
-      ],
-      "criteria": "Covers empty list, single element match/mismatch, first element, last element, and missing element.",
-      "max_score": 10
-    },
-    "reference_solution": "def test_empty_array():\n    assert binary_search([], 5) == -1\ndef test_single_element_found():\n    assert binary_search([5], 5) == 0\ndef test_single_element_not_found():\n    assert binary_search([5], 3) == -1\ndef test_target_at_edges():\n    arr = [1, 3, 5, 7, 9]\n    assert binary_search(arr, 1) == 0\n    assert binary_search(arr, 9) == 4\ndef test_target_not_present():\n    arr = [2, 4, 6, 8]\n    assert binary_search(arr, 5) == -1"
-  },
-  {
-    "id": "TESTING_08",
-    "category": "UNIT_TESTING",
-    "difficulty": "boundary",
-    "prompt": "Here is a discount calculation function:\n```python\ndef calculate_cart_discount(subtotal: float, coupon_code: str | None, is_vip: bool) -> float:\n    discount = 0.0\n    if coupon_code == 'SAVE20' and subtotal >= 100.0:\n        discount += 0.20 * subtotal\n    elif coupon_code == 'SAVE10':\n        discount += 0.10 * subtotal\n    if is_vip:\n        discount += 0.05 * subtotal\n    return min(discount, subtotal)\n```\nWrite a pytest test suite achieving 100% branch and statement coverage for this function.",
-    "evaluation_type": "rubric",
-    "description": "100% branch coverage unit test suite",
-    "rubric": {
-      "required_elements": [
-        "def test_",
-        "calculate_cart_discount",
-        "SAVE20",
-        "SAVE10",
-        "is_vip"
-      ],
-      "criteria": "Exercises all branches: SAVE20 with subtotal >= 100, SAVE20 with subtotal < 100, SAVE10, other coupon, VIP True/False, and discount cap min(discount, subtotal).",
-      "max_score": 10
-    },
-    "reference_solution": "import pytest\ndef test_save20_eligible():\n    assert calculate_cart_discount(100.0, 'SAVE20', False) == 20.0\ndef test_save20_ineligible():\n    assert calculate_cart_discount(50.0, 'SAVE20', False) == 0.0\ndef test_save10():\n    assert calculate_cart_discount(50.0, 'SAVE10', False) == 5.0\ndef test_vip_stacking():\n    assert calculate_cart_discount(100.0, 'SAVE20', True) == 25.0\ndef test_no_coupon_not_vip():\n    assert calculate_cart_discount(100.0, None, False) == 0.0"
-  },
-  {
-    "id": "TESTING_09",
-    "category": "UNIT_TESTING",
-    "difficulty": "boundary",
-    "prompt": "Write a unit test using `pytest` and `concurrent.futures.ThreadPoolExecutor` to test for race conditions in a thread-safe in-memory cache class `ThreadSafeCache`. The test must spawn 10 threads doing concurrent `increment(key)` calls and assert the final counter value equals 1000.",
-    "evaluation_type": "rubric",
-    "description": "Concurrent multi-thread race condition test",
-    "rubric": {
-      "required_elements": [
-        "ThreadPoolExecutor",
-        "test_",
-        "assert",
-        "increment"
-      ],
-      "criteria": "Uses ThreadPoolExecutor to run concurrent increments across threads and asserts exact final counter value.",
-      "max_score": 10
-    },
-    "reference_solution": "from concurrent.futures import ThreadPoolExecutor\ndef test_cache_concurrent_increments():\n    cache = ThreadSafeCache()\n    cache.set('counter', 0)\n    def worker():\n        for _ in range(100):\n            cache.increment('counter')\n    with ThreadPoolExecutor(max_workers=10) as executor:\n        futures = [executor.submit(worker) for _ in range(10)]\n        for f in futures:\n            f.result()\n    assert cache.get('counter') == 1000"
-  },
-  {
-    "id": "TESTING_10",
-    "category": "UNIT_TESTING",
-    "difficulty": "boundary",
-    "prompt": "Write an asynchronous pytest test case using `pytest-asyncio` that tests an async retry utility `fetch_with_retry(client, url, max_retries=3)`. Mock the client so that it raises `httpx.ConnectError` on the first two attempts, and returns a 200 response on the third attempt.",
-    "evaluation_type": "rubric",
-    "description": "Async unit test with mock retry sequencing",
-    "rubric": {
-      "required_elements": [
-        "pytest.mark.asyncio",
-        "AsyncMock",
-        "side_effect",
-        "assert",
-        "call_count"
-      ],
-      "criteria": "Uses pytest.mark.asyncio and AsyncMock side_effect sequence to verify 2 failures followed by success.",
-      "max_score": 10
-    },
-    "reference_solution": "import pytest, httpx\nfrom unittest.mock import AsyncMock, MagicMock\n@pytest.mark.asyncio\nasync def test_fetch_with_retry_succeeds_after_two_failures():\n    mock_resp = MagicMock(status_code=200)\n    mock_client = MagicMock()\n    mock_client.get = AsyncMock(side_effect=[httpx.ConnectError('fail 1'), httpx.ConnectError('fail 2'), mock_resp])\n    res = await fetch_with_retry(mock_client, 'https://example.com', max_retries=3)\n    assert res.status_code == 200\n    assert mock_client.get.call_count == 3"
-  },
-  {
-    "id": "REASONING_01",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "Solve the classic river crossing puzzle: A farmer must transport a wolf, a goat, and a cabbage across a river in a boat that can only hold the farmer and one item. Left alone, the wolf eats the goat, or the goat eats the cabbage. Give the exact step-by-step sequence of river crossings.",
-    "evaluation_type": "deterministic",
-    "description": "Wolf, goat, cabbage river crossing problem",
-    "rubric": {
-      "required_elements": [
-        "goat across",
-        "farmer returns",
-        "wolf",
-        "cabbage"
-      ],
-      "criteria": "Must correctly take goat first, bring goat back when wolf/cabbage is transported, ensuring no invalid pair is left unattended.",
-      "max_score": 10
-    },
-    "reference_solution": "Step 1: Farmer takes Goat across (leaving Wolf and Cabbage).\nStep 2: Farmer returns alone.\nStep 3: Farmer takes Wolf across.\nStep 4: Farmer returns with Goat.\nStep 5: Farmer takes Cabbage across.\nStep 6: Farmer returns alone.\nStep 7: Farmer takes Goat across.\nAll safely across."
-  },
-  {
-    "id": "REASONING_02",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "Solve this probability problem with Bayes' Theorem: A medical test for a rare condition has a 99% sensitivity (true positive rate) and a 95% specificity (true negative rate). The condition affects 0.1% (1 in 1000) of the population. If a patient tests positive, what is the exact posterior probability that they actually have the condition? Show the step-by-step calculation.",
-    "evaluation_type": "deterministic",
-    "description": "Bayes' theorem calculation of medical test positive predictive value",
-    "rubric": {
-      "required_elements": [
-        "Bayes",
-        "0.001",
-        "0.99",
-        "0.05",
-        "1.9%"
-      ],
-      "criteria": "Calculates P(D)=0.001, P(+|D)=0.99, P(+|~D)=0.05, total P(+)=0.05094, and posterior P(D|+)=0.00099/0.05094 ≈ 0.0194 (approx 1.94%).",
-      "max_score": 10
-    },
-    "reference_solution": "P(D) = 0.001, P(~D) = 0.999.\nP(+|D) = 0.99, P(+|~D) = 1 - 0.95 = 0.05.\nP(+) = P(+|D)*P(D) + P(+|~D)*P(~D) = 0.99*0.001 + 0.05*0.999 = 0.00099 + 0.04995 = 0.05094.\nP(D|+) = (0.99 * 0.001) / 0.05094 = 0.00099 / 0.05094 ≈ 0.019434 (approx 1.94%)."
-  },
-  {
-    "id": "REASONING_03",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "Analyze the architectural trade-offs between an Event-Driven Architecture (EDA) and a synchronous REST microservices architecture across four specific dimensions: (1) temporal coupling, (2) tail latency, (3) distributed debugging/observability, and (4) eventual consistency management.",
-    "evaluation_type": "rubric",
-    "description": "System architecture trade-off analysis: EDA vs REST",
-    "rubric": {
-      "required_elements": [
-        "temporal coupling",
-        "tail latency",
-        "observability",
-        "eventual consistency"
-      ],
-      "criteria": "Detailed evaluation covering decoupling vs cascading sync calls, async queue buffering vs synchronous blocking latency, distributed tracing complexity in async queues, and compensating transactions (sagas).",
-      "max_score": 10
-    },
-    "reference_solution": "1. Temporal coupling: REST requires caller and callee to be available simultaneously; EDA decouples time via message brokers.\n2. Tail latency: REST aggregates latency across downstream RPC chains; EDA responds immediately upon broker ingest, decoupling tail latency from slow downstream workers.\n3. Observability: REST is simpler to trace synchronously; EDA requires distributed correlation IDs across asynchronous queues and dead-letter handling.\n4. Consistency: REST leans toward immediate transactional consistency within service boundaries; EDA embraces eventual consistency requiring saga orchestrators or outbox patterns."
-  },
-  {
-    "id": "REASONING_04",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "Derive the asymptotic time complexity of Strassen's matrix multiplication using the Master Theorem. Given the recurrence relation T(n) = 7*T(n/2) + O(n^2), explicitly identify parameters a, b, f(n), calculate the critical exponent log_b(a), compare it to the polynomial degree of f(n), and state the resulting Big-O bound.",
-    "evaluation_type": "deterministic",
-    "description": "Master Theorem derivation of Strassen algorithm",
-    "rubric": {
-      "required_elements": [
-        "a = 7",
-        "b = 2",
-        "log_2(7)",
-        "2.807",
-        "O(n^"
-      ],
-      "criteria": "Identifies a=7, b=2, f(n)=O(n^2). Calculates log_2(7) ≈ 2.807. Since log_2(7) > 2, Case 1 applies, yielding O(n^log_2(7)) ≈ O(n^2.81).",
-      "max_score": 10
-    },
-    "reference_solution": "Recurrence: T(n) = 7*T(n/2) + O(n^2).\nParameters: a = 7, b = 2, f(n) = O(n^2).\nCritical exponent: log_b(a) = log_2(7) ≈ 2.8074.\nComparison: f(n) = O(n^2) is polynomially smaller than n^(log_2(7)) since 2 < 2.8074 (difference epsilon ≈ 0.807).\nBy Case 1 of the Master Theorem, T(n) = Theta(n^(log_2(7))) ≈ O(n^2.807)."
-  },
-  {
-    "id": "REASONING_05",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "On an island of Knights (who always tell the truth) and Knaves (who always lie), you meet two inhabitants, A and B. Inhabitant A states: 'At least one of us is a knave.' Determine the identities of A and B, proving your conclusion by analyzing the truth-value cases.",
-    "evaluation_type": "deterministic",
-    "description": "Knight and Knave formal logic deduction",
-    "rubric": {
-      "required_elements": [
-        "A is a Knight",
-        "B is a Knave",
-        "contradiction"
-      ],
-      "criteria": "Rigorous proof: If A is Knave, the statement 'at least one is a knave' is True, contradicting that Knaves only lie. Therefore A is a Knight (statement is True). Since A is not a Knave, B must be a Knave.",
-      "max_score": 10
-    },
-    "reference_solution": "Case 1: Suppose A is a Knave. Then A's statement must be false. But if A is a Knave, 'at least one of us is a knave' is true, which is a contradiction. Hence, A cannot be a Knave.\nCase 2: A must be a Knight. Since Knights tell the truth, A's statement 'at least one of us is a knave' is true. Since A is a Knight, B must be a Knave.\nConclusion: A is a Knight and B is a Knave."
-  },
-  {
-    "id": "REASONING_06",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "Perform a capacity sizing calculation for a photo service: 100 million Daily Active Users (DAU). Each user uploads an average of 2 photos/day (average 2 MB each) and views 20 photos/day. Calculate: (1) Daily storage ingestion in Terabytes (TB), and (2) Average network egress bandwidth required in Gigabits per second (Gbps) assuming uniform traffic over 24 hours.",
-    "evaluation_type": "deterministic",
-    "description": "Back-of-the-envelope storage and bandwidth sizing calculation",
-    "rubric": {
-      "required_elements": [
-        "400 TB",
-        "4,000 TB",
-        "370",
-        "Gbps"
-      ],
-      "criteria": "Daily ingest: 100M * 2 * 2MB = 400,000,000 MB = 400 TB. Egress: 100M * 20 * 2MB = 4,000 TB/day. Egress in Gbps: 4,000 TB * 8 * 10^12 bits / (86,400 s) ≈ 370 Gbps (or 397 Gbps if using 1024 base).",
-      "max_score": 10
-    },
-    "reference_solution": "1. Daily Storage Ingestion:\n   100,000,000 users * 2 photos/day * 2 MB = 400,000,000 MB = 400 TB / day.\n2. Average Egress Bandwidth:\n   Daily egress volume = 100,000,000 * 20 photos * 2 MB = 4,000,000,000 MB = 4,000 TB = 4 Petabytes / day.\n   Seconds per day = 86,400.\n   Average rate = 4,000 * 10^12 bytes * 8 bits/byte / 86,400 s ≈ 370.37 Gbps (or 397.7 Gbps if 1024-based)."
-  },
-  {
-    "id": "REASONING_07",
-    "category": "REASONING",
-    "difficulty": "clear",
-    "prompt": "Explain the ABA problem in lock-free concurrent programming using Compare-And-Swap (CAS). Provide a clear scenario of how it manifests in a lock-free stack (Treiber stack) popping an element, and describe two concrete engineering solutions (such as tagged pointers/version counters and hazard pointers).",
-    "evaluation_type": "rubric",
-    "description": "Lock-free concurrency ABA problem and solutions",
-    "rubric": {
-      "required_elements": [
-        "CAS",
-        "Compare-And-Swap",
-        "Treiber",
-        "tagged pointer",
-        "version counter",
-        "hazard pointer"
-      ],
-      "criteria": "Explains thread 1 reading A->B, interrupted, memory recycled, thread 2 changing A->B->A, thread 1 CAS succeeding despite corrupted list. Solutions: tagged pointers (ABA counter) or hazard pointers.",
-      "max_score": 10
-    },
-    "reference_solution": "The ABA problem occurs when a thread reads memory location with value A, other threads change it to B and back to A, and the first thread's CAS succeeds assuming no changes occurred.\nIn a Treiber stack: Thread 1 observes Top=A, Next=B. Thread 1 is preempted. Thread 2 pops A, pops B, and pushes A back. Thread 1 resumes and executes CAS(Top, A, B). The CAS succeeds because Top is still A, but B has been freed or reused, corrupting the stack.\nSolutions: (1) Tagged pointers / version counters (packing an incrementing counter with the pointer into a 64/128-bit word). (2) Hazard pointers or epoch-based reclamation preventing reuse while referenced."
-  },
-  {
-    "id": "REASONING_08",
-    "category": "REASONING",
-    "difficulty": "boundary",
-    "prompt": "Design an idempotent payment processing workflow for a distributed checkout system. Specify the state machine states, the exact role of client-generated idempotency keys, how database unique constraints prevent double-charging race conditions, and how transient gateway timeouts should be recovered safely.",
-    "evaluation_type": "rubric",
-    "description": "Distributed systems idempotent payment workflow design",
-    "rubric": {
-      "required_elements": [
-        "idempotency key",
-        "unique constraint",
-        "PENDING",
-        "SUCCESS",
-        "distributed lock"
-      ],
-      "criteria": "Addresses idempotency key uniqueness, atomic insert/lock, state transitions (INITIATED -> PROCESSING -> SUCCESS/FAILED), and polling/reconciliation on timeout.",
-      "max_score": 10
-    },
-    "reference_solution": "1. Idempotency Key: Client sends unique idempotency_key (UUID v4) with checkout request.\n2. Database Unique Constraint: An `idempotency_records` table stores (idempotency_key UNIQUE, status, response_body, created_at).\n3. State Machine: INITIATED -> PROCESSING -> COMPLETED / FAILED.\n4. Concurrency Guard: DB INSERT of key in PENDING state atomically prevents duplicate execution. Concurrent requests with same key encounter constraint violation and wait or poll.\n5. Gateway Timeout Recovery: If upstream gateway times out, state remains PROCESSING. An asynchronous reconciliation job queries the gateway with the payment intent ID to verify actual status before retrying."
-  },
-  {
-    "id": "REASONING_09",
-    "category": "REASONING",
-    "difficulty": "boundary",
-    "prompt": "Explain why Python's Global Interpreter Lock (GIL) does not prevent race conditions in multi-threaded application code. Illustrate this by breaking down how a simple operation like `count += 1` translates into bytecode instructions, and show where thread context switches can interleave to cause lost updates.",
-    "evaluation_type": "rubric",
-    "description": "GIL vs application-level race conditions and bytecode breakdown",
-    "rubric": {
-      "required_elements": [
-        "bytecode",
-        "LOAD_FAST",
-        "INPLACE_ADD",
-        "STORE_FAST",
-        "context switch",
-        "atomicity"
-      ],
-      "criteria": "Explains that the GIL ensures interpreter memory safety (C-level atomicity), not Python bytecode atomicity. Shows `count += 1` involves LOAD, ADD, STORE, where preemption between LOAD and STORE causes lost updates.",
-      "max_score": 10
-    },
-    "reference_solution": "The GIL ensures that the Python interpreter's internal state (reference counts, C extensions) is thread-safe, but it releases and re-acquires the lock periodically (sys.getswitchinterval()).\nBytecode breakdown for `count += 1`:\n1. LOAD_FAST (reads current value of count onto stack)\n2. INPLACE_ADD (adds 1)\n3. STORE_FAST (stores result back to count)\nA thread switch can occur after step 1. If Thread A reads count=5, switches to Thread B which reads count=5, increments to 6, and stores 6; when Thread A resumes, it increments its local 5 to 6 and stores 6. One increment is lost despite the GIL."
-  },
-  {
-    "id": "REASONING_10",
-    "category": "REASONING",
-    "difficulty": "boundary",
-    "prompt": "You are given two empty water jugs with capacities of 3 liters and 5 liters, and an unlimited supply of water. You need to measure out exactly 4 liters. Provide the complete step-by-step sequence of operations, clearly listing the contents of both jugs at each step until 4 liters is achieved.",
-    "evaluation_type": "deterministic",
-    "description": "3-liter and 5-liter water jug riddle",
-    "rubric": {
-      "required_elements": [
-        "3L",
-        "5L",
-        "4 liters",
-        "Step"
-      ],
-      "criteria": "Step-by-step state transitions showing jug contents (3L, 5L) successfully reaching 4L in the 5L jug.",
-      "max_score": 10
-    },
-    "reference_solution": "Method A:\nStep 1: Fill the 5L jug completely. (3L: 0, 5L: 5)\nStep 2: Pour from 5L jug into 3L jug until full. (3L: 3, 5L: 2)\nStep 3: Empty the 3L jug. (3L: 0, 5L: 2)\nStep 4: Pour the 2 liters from 5L jug into 3L jug. (3L: 2, 5L: 0)\nStep 5: Fill the 5L jug completely. (3L: 2, 5L: 5)\nStep 6: Pour from 5L jug into 3L jug until full (transfers 1 liter). (3L: 3, 5L: 4)\nResult: The 5-liter jug now contains exactly 4 liters."
-  },
-  {
     "category": "CODING",
     "difficulty": "clear",
     "description": "Merge two sorted arrays",
@@ -800,11 +410,205 @@
     }
   },
   {
+    "id": "TESTING_28",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Write a complete pytest test suite for a user registration validator `validate_user(username: str, email: str, age: int) -> tuple[bool, str]`. Cover valid inputs, username under 3 characters, invalid email without '@', and age under 18.",
+    "evaluation_type": "rubric",
+    "description": "Pytest suite for input validator",
+    "rubric": {
+      "required_elements": [
+        "def test_",
+        "assert",
+        "@pytest.mark.parametrize",
+        "validate_user"
+      ],
+      "criteria": "Provides structured pytest tests with assertions checking both boolean success and specific error messages.",
+      "max_score": 10
+    },
+    "reference_solution": "import pytest\ndef test_valid_user():\n    ok, msg = validate_user('alice', 'alice@example.com', 25)\n    assert ok is True\n    assert msg == ''\n\ndef test_short_username():\n    ok, msg = validate_user('al', 'al@example.com', 25)\n    assert ok is False\n    assert 'username' in msg.lower()\n\ndef test_invalid_email():\n    ok, msg = validate_user('alice', 'invalid-email', 25)\n    assert ok is False\n    assert 'email' in msg.lower()\n\ndef test_underage():\n    ok, msg = validate_user('alice', 'alice@example.com', 17)\n    assert ok is False\n    assert 'age' in msg.lower()"
+  },
+  {
+    "id": "TESTING_29",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Write pytest unit tests using `unittest.mock.patch` to mock an external payment gateway `PaymentClient.charge(card_token, amount)`. Test two cases: (1) successful charge returning transaction ID, and (2) payment failure throwing `PaymentDeclinedError`.",
+    "evaluation_type": "rubric",
+    "description": "Mocking external payment gateway with unittest.mock",
+    "rubric": {
+      "required_elements": [
+        "patch",
+        "test_",
+        "assert",
+        "pytest.raises"
+      ],
+      "criteria": "Uses unittest.mock.patch to mock PaymentClient.charge, asserts return value and mock called_once_with.",
+      "max_score": 10
+    },
+    "reference_solution": "from unittest.mock import patch, MagicMock\nimport pytest\n@patch('app.payment.PaymentClient.charge')\ndef test_payment_success(mock_charge):\n    mock_charge.return_value = {'tx_id': 'tx_123', 'status': 'success'}\n    res = process_payment('tok_abc', 5000)\n    assert res['tx_id'] == 'tx_123'\n    mock_charge.assert_called_once_with('tok_abc', 5000)\n\n@patch('app.payment.PaymentClient.charge')\ndef test_payment_declined(mock_charge):\n    mock_charge.side_effect = PaymentDeclinedError('Insufficient funds')\n    with pytest.raises(PaymentDeclinedError):\n        process_payment('tok_abc', 5000)"
+  },
+  {
+    "id": "TESTING_30",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Create a pytest test suite with pytest fixtures (`@pytest.fixture`) for an in-memory SQLite database connection. Write unit tests testing creating a table, inserting a record, and querying that record.",
+    "evaluation_type": "rubric",
+    "description": "Pytest fixture for SQLite and CRUD tests",
+    "rubric": {
+      "required_elements": [
+        "@pytest.fixture",
+        "sqlite3.connect",
+        "yield",
+        "cursor",
+        "assert"
+      ],
+      "criteria": "Defines fixture yielding SQLite in-memory connection and closing it, with test asserting table creation and record query.",
+      "max_score": 10
+    },
+    "reference_solution": "import pytest, sqlite3\n@pytest.fixture\ndef db_conn():\n    conn = sqlite3.connect(':memory:')\n    yield conn\n    conn.close()\n\ndef test_create_and_query(db_conn):\n    cur = db_conn.cursor()\n    cur.execute('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)')\n    cur.execute('INSERT INTO users (name) VALUES (?)', ('Alice',))\n    db_conn.commit()\n    cur.execute('SELECT name FROM users WHERE id = 1')\n    row = cur.fetchone()\n    assert row[0] == 'Alice'"
+  },
+  {
+    "id": "TESTING_31",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Write unit test cases using Jest for a JavaScript utility function `formatCurrency(amount, currencyCode)` covering positive amount, zero amount, negative amount, and unsupported currency code throwing an Error.",
+    "evaluation_type": "rubric",
+    "description": "Jest unit test suite for currency formatter",
+    "rubric": {
+      "required_elements": [
+        "describe",
+        "test",
+        "expect",
+        "toThrow"
+      ],
+      "criteria": "Uses standard Jest describe/test/it syntax with expect assertions for values and thrown exceptions.",
+      "max_score": 10
+    },
+    "reference_solution": "describe('formatCurrency', () => {\n  test('formats positive USD', () => {\n    expect(formatCurrency(12.5, 'USD')).toBe('$12.50');\n  });\n  test('formats zero', () => {\n    expect(formatCurrency(0, 'USD')).toBe('$0.00');\n  });\n  test('formats negative amount', () => {\n    expect(formatCurrency(-5.0, 'USD')).toBe('-$5.00');\n  });\n  test('throws on unsupported currency', () => {\n    expect(() => formatCurrency(10, 'XYZ')).toThrow('Unsupported currency');\n  });\n});"
+  },
+  {
+    "id": "TESTING_32",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Write parametrized pytest test cases (`@pytest.mark.parametrize`) testing boundary conditions and leap year rules for `is_leap_year(year: int) -> bool`. Include years: 2000 (leap), 1900 (not leap), 2024 (leap), 2023 (not leap), and 1600 (leap).",
+    "evaluation_type": "rubric",
+    "description": "Parametrized pytest tests for leap year rules",
+    "rubric": {
+      "required_elements": [
+        "@pytest.mark.parametrize",
+        "assert is_leap_year",
+        "2000",
+        "1900"
+      ],
+      "criteria": "Uses pytest.mark.parametrize with exact leap year test pairs (2000 True, 1900 False, 2024 True, 2023 False, 1600 True).",
+      "max_score": 10
+    },
+    "reference_solution": "import pytest\n@pytest.mark.parametrize('year,expected', [\n    (2000, True),\n    (1900, False),\n    (2024, True),\n    (2023, False),\n    (1600, True),\n])\ndef test_is_leap_year(year, expected):\n    assert is_leap_year(year) == expected"
+  },
+  {
+    "id": "TESTING_33",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Write unit test cases using FastAPI `TestClient` to verify an API endpoint `/api/items`: test 200 OK with valid JSON payload, 422 Unprocessable Entity when required field `name` is missing, and 401 Unauthorized when Bearer token header is absent.",
+    "evaluation_type": "rubric",
+    "description": "FastAPI TestClient endpoint tests",
+    "rubric": {
+      "required_elements": [
+        "TestClient",
+        "client.post",
+        "status_code == 200",
+        "status_code == 422",
+        "status_code == 401"
+      ],
+      "criteria": "Tests status codes 200, 422, and 401 with appropriate request headers and payloads.",
+      "max_score": 10
+    },
+    "reference_solution": "from fastapi.testclient import TestClient\nfrom app.main import app\nclient = TestClient(app)\ndef test_create_item_success():\n    r = client.post('/api/items', json={'name': 'Item1'}, headers={'Authorization': 'Bearer test-token'})\n    assert r.status_code == 200\ndef test_create_item_missing_name():\n    r = client.post('/api/items', json={}, headers={'Authorization': 'Bearer test-token'})\n    assert r.status_code == 422\ndef test_create_item_unauthorized():\n    r = client.post('/api/items', json={'name': 'Item1'})\n    assert r.status_code == 401"
+  },
+  {
+    "id": "TESTING_34",
+    "category": "UNIT_TESTING",
+    "difficulty": "clear",
+    "prompt": "Construct a unit test suite specifically focused on edge cases and defect detection for a binary search function `binary_search(arr, target)`. Test: empty array, single-element array (present and absent), target at first index, target at last index, duplicate elements, and even/odd length arrays.",
+    "evaluation_type": "rubric",
+    "description": "Edge-case defect detection tests for binary search",
+    "rubric": {
+      "required_elements": [
+        "def test_",
+        "assert",
+        "[]",
+        "target"
+      ],
+      "criteria": "Covers empty list, single element match/mismatch, first element, last element, and missing element.",
+      "max_score": 10
+    },
+    "reference_solution": "def test_empty_array():\n    assert binary_search([], 5) == -1\ndef test_single_element_found():\n    assert binary_search([5], 5) == 0\ndef test_single_element_not_found():\n    assert binary_search([5], 3) == -1\ndef test_target_at_edges():\n    arr = [1, 3, 5, 7, 9]\n    assert binary_search(arr, 1) == 0\n    assert binary_search(arr, 9) == 4\ndef test_target_not_present():\n    arr = [2, 4, 6, 8]\n    assert binary_search(arr, 5) == -1"
+  },
+  {
+    "id": "TESTING_35",
+    "category": "UNIT_TESTING",
+    "difficulty": "boundary",
+    "prompt": "Here is a discount calculation function:\n```python\ndef calculate_cart_discount(subtotal: float, coupon_code: str | None, is_vip: bool) -> float:\n    discount = 0.0\n    if coupon_code == 'SAVE20' and subtotal >= 100.0:\n        discount += 0.20 * subtotal\n    elif coupon_code == 'SAVE10':\n        discount += 0.10 * subtotal\n    if is_vip:\n        discount += 0.05 * subtotal\n    return min(discount, subtotal)\n```\nWrite a pytest test suite achieving 100% branch and statement coverage for this function.",
+    "evaluation_type": "rubric",
+    "description": "100% branch coverage unit test suite",
+    "rubric": {
+      "required_elements": [
+        "def test_",
+        "calculate_cart_discount",
+        "SAVE20",
+        "SAVE10",
+        "is_vip"
+      ],
+      "criteria": "Exercises all branches: SAVE20 with subtotal >= 100, SAVE20 with subtotal < 100, SAVE10, other coupon, VIP True/False, and discount cap min(discount, subtotal).",
+      "max_score": 10
+    },
+    "reference_solution": "import pytest\ndef test_save20_eligible():\n    assert calculate_cart_discount(100.0, 'SAVE20', False) == 20.0\ndef test_save20_ineligible():\n    assert calculate_cart_discount(50.0, 'SAVE20', False) == 0.0\ndef test_save10():\n    assert calculate_cart_discount(50.0, 'SAVE10', False) == 5.0\ndef test_vip_stacking():\n    assert calculate_cart_discount(100.0, 'SAVE20', True) == 25.0\ndef test_no_coupon_not_vip():\n    assert calculate_cart_discount(100.0, None, False) == 0.0"
+  },
+  {
+    "id": "TESTING_36",
+    "category": "UNIT_TESTING",
+    "difficulty": "boundary",
+    "prompt": "Write a unit test using `pytest` and `concurrent.futures.ThreadPoolExecutor` to test for race conditions in a thread-safe in-memory cache class `ThreadSafeCache`. The test must spawn 10 threads doing concurrent `increment(key)` calls and assert the final counter value equals 1000.",
+    "evaluation_type": "rubric",
+    "description": "Concurrent multi-thread race condition test",
+    "rubric": {
+      "required_elements": [
+        "ThreadPoolExecutor",
+        "test_",
+        "assert",
+        "increment"
+      ],
+      "criteria": "Uses ThreadPoolExecutor to run concurrent increments across threads and asserts exact final counter value.",
+      "max_score": 10
+    },
+    "reference_solution": "from concurrent.futures import ThreadPoolExecutor\ndef test_cache_concurrent_increments():\n    cache = ThreadSafeCache()\n    cache.set('counter', 0)\n    def worker():\n        for _ in range(100):\n            cache.increment('counter')\n    with ThreadPoolExecutor(max_workers=10) as executor:\n        futures = [executor.submit(worker) for _ in range(10)]\n        for f in futures:\n            f.result()\n    assert cache.get('counter') == 1000"
+  },
+  {
+    "id": "TESTING_37",
+    "category": "UNIT_TESTING",
+    "difficulty": "boundary",
+    "prompt": "Write an asynchronous pytest test case using `pytest-asyncio` that tests an async retry utility `fetch_with_retry(client, url, max_retries=3)`. Mock the client so that it raises `httpx.ConnectError` on the first two attempts, and returns a 200 response on the third attempt.",
+    "evaluation_type": "rubric",
+    "description": "Async unit test with mock retry sequencing",
+    "rubric": {
+      "required_elements": [
+        "pytest.mark.asyncio",
+        "AsyncMock",
+        "side_effect",
+        "assert",
+        "call_count"
+      ],
+      "criteria": "Uses pytest.mark.asyncio and AsyncMock side_effect sequence to verify 2 failures followed by success.",
+      "max_score": 10
+    },
+    "reference_solution": "import pytest, httpx\nfrom unittest.mock import AsyncMock, MagicMock\n@pytest.mark.asyncio\nasync def test_fetch_with_retry_succeeds_after_two_failures():\n    mock_resp = MagicMock(status_code=200)\n    mock_client = MagicMock()\n    mock_client.get = AsyncMock(side_effect=[httpx.ConnectError('fail 1'), httpx.ConnectError('fail 2'), mock_resp])\n    res = await fetch_with_retry(mock_client, 'https://example.com', max_retries=3)\n    assert res.status_code == 200\n    assert mock_client.get.call_count == 3"
+  },
+  {
     "category": "UNIT_TESTING",
     "difficulty": "clear",
     "description": "Test password policy validator",
     "prompt": "Write pytest tests for `validate_password(password)` covering minimum and maximum length, missing uppercase/lowercase/digit/symbol, whitespace, valid password, and multiple simultaneous violations.",
-    "id": "UNIT_TESTING_28",
+    "id": "TESTING_38",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -817,7 +621,7 @@
     "difficulty": "clear",
     "description": "Test REST pagination",
     "prompt": "Create pytest tests for a paginated REST client. Cover first page, multiple pages, empty final page, repeated cursor protection, HTTP 500, and malformed JSON responses. Mock the HTTP transport.",
-    "id": "UNIT_TESTING_29",
+    "id": "TESTING_39",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -830,7 +634,7 @@
     "difficulty": "clear",
     "description": "Test date range overlap",
     "prompt": "Write parametrized pytest tests for `ranges_overlap(start_a, end_a, start_b, end_b)`. Cover touching endpoints, identical ranges, containment, disjoint ranges, reversed ranges, and timezone-aware datetimes.",
-    "id": "UNIT_TESTING_30",
+    "id": "TESTING_40",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -843,7 +647,7 @@
     "difficulty": "clear",
     "description": "Test a Flask authentication endpoint",
     "prompt": "Write pytest tests for a Flask login endpoint covering valid credentials, incorrect password, unknown user, missing fields, malformed JSON, locked account, and session cookie behaviour. Use fixtures and a test client.",
-    "id": "UNIT_TESTING_31",
+    "id": "TESTING_41",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -856,7 +660,7 @@
     "difficulty": "clear",
     "description": "Test Java service with Mockito",
     "prompt": "Write JUnit 5 and Mockito unit tests for `OrderService.placeOrder`. Cover successful repository save, insufficient inventory, payment gateway exception, repository failure, and verify interactions without hitting external services.",
-    "id": "UNIT_TESTING_32",
+    "id": "TESTING_42",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -869,7 +673,7 @@
     "difficulty": "clear",
     "description": "Test a React component",
     "prompt": "Write React Testing Library tests for a searchable product list. Cover initial rendering, case-insensitive filtering, no-results state, clearing the search, keyboard input, and accessible labels.",
-    "id": "UNIT_TESTING_33",
+    "id": "TESTING_43",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -882,7 +686,7 @@
     "difficulty": "clear",
     "description": "Test SQL transaction rollback",
     "prompt": "Design pytest integration tests for a service that transfers money between two SQLite accounts. Verify successful transfer, insufficient funds, missing destination, and that all database changes roll back after an injected failure.",
-    "id": "UNIT_TESTING_34",
+    "id": "TESTING_44",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -895,7 +699,7 @@
     "difficulty": "boundary",
     "description": "Test cache expiration with fake clock",
     "prompt": "Write deterministic pytest tests for a TTL cache using an injected fake clock. Cover just-before-expiry, exact expiry boundary, after expiry, overwrite resetting TTL, deletion, and concurrent reads.",
-    "id": "UNIT_TESTING_35",
+    "id": "TESTING_45",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -908,7 +712,7 @@
     "difficulty": "boundary",
     "description": "Test message consumer idempotency",
     "prompt": "Create pytest tests for a message consumer that processes events with unique event IDs. Verify duplicate delivery does not repeat side effects, failed processing can retry, and concurrent duplicate deliveries are safe.",
-    "id": "UNIT_TESTING_36",
+    "id": "TESTING_46",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -921,7 +725,7 @@
     "difficulty": "boundary",
     "description": "Test circuit breaker state transitions",
     "prompt": "Write parametrized pytest tests for a circuit breaker with CLOSED, OPEN, and HALF_OPEN states. Cover failure threshold, cooldown, successful probe, failed probe, and concurrent requests during transitions.",
-    "id": "UNIT_TESTING_37",
+    "id": "TESTING_47",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -934,7 +738,7 @@
     "difficulty": "boundary",
     "description": "Test file upload validation",
     "prompt": "Write pytest tests for an upload endpoint validating file size, extension, MIME type, empty files, path traversal filenames, duplicate names, and cleanup after partial storage failure.",
-    "id": "UNIT_TESTING_11",
+    "id": "TESTING_48",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -947,7 +751,7 @@
     "difficulty": "boundary",
     "description": "Test async task cancellation",
     "prompt": "Write pytest-asyncio tests for an async task manager. Cover successful completion, task exception, cancellation during work, cancellation cleanup, timeout, and ensuring no pending tasks remain.",
-    "id": "UNIT_TESTING_12",
+    "id": "TESTING_49",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -960,7 +764,7 @@
     "difficulty": "complex",
     "description": "Test distributed lock lease renewal",
     "prompt": "Design tests for a distributed lock client with lease expiry and renewal. Cover ownership tokens, stale owner release, renewal races, clock boundaries, network timeout, and recovery after lock service restart using deterministic fakes.",
-    "id": "UNIT_TESTING_13",
+    "id": "TESTING_50",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -973,7 +777,7 @@
     "difficulty": "complex",
     "description": "Test event-driven outbox processing",
     "prompt": "Create tests for a transactional outbox publisher. Verify domain update and outbox insert commit atomically, rollback together, retries after broker failure, duplicate delivery handling, and ordering guarantees.",
-    "id": "UNIT_TESTING_14",
+    "id": "TESTING_51",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -986,7 +790,7 @@
     "difficulty": "complex",
     "description": "Test database query performance regression",
     "prompt": "Propose an automated pytest strategy for detecting a database query-count regression in an ORM-backed endpoint. Include fixtures, query capture, baseline assertions, pagination cases, and protection against brittle timing-only tests.",
-    "id": "UNIT_TESTING_15",
+    "id": "TESTING_52",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -999,7 +803,7 @@
     "difficulty": "complex",
     "description": "Test concurrent inventory reservation",
     "prompt": "Write integration tests for concurrent inventory reservations where stock must never become negative. Cover simultaneous requests, transaction isolation, duplicate idempotency keys, rollback, and deterministic assertions.",
-    "id": "UNIT_TESTING_16",
+    "id": "TESTING_53",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1012,7 +816,7 @@
     "difficulty": "complex",
     "description": "Test webhook signature and replay protection",
     "prompt": "Develop pytest cases for a webhook handler using HMAC signatures and timestamps. Cover valid signatures, altered payloads, wrong secrets, expired timestamps, replayed event IDs, malformed headers, and constant-time comparison expectations.",
-    "id": "UNIT_TESTING_17",
+    "id": "TESTING_54",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1021,37 +825,207 @@
     }
   },
   {
-    "category": "UNIT_TESTING",
-    "difficulty": "complex",
-    "description": "Test failover and retry policy",
-    "prompt": "Design tests for a service calling two upstream providers. Cover primary success, retryable primary failure, non-retryable failure, secondary fallback, both providers failing, timeout budget exhaustion, and accurate attempt accounting.",
-    "id": "UNIT_TESTING_18",
-    "evaluation_type": "rubric",
+    "id": "REASONING_55",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "Solve the classic river crossing puzzle: A farmer must transport a wolf, a goat, and a cabbage across a river in a boat that can only hold the farmer and one item. Left alone, the wolf eats the goat, or the goat eats the cabbage. Give the exact step-by-step sequence of river crossings.",
+    "evaluation_type": "deterministic",
+    "description": "Wolf, goat, cabbage river crossing problem",
     "rubric": {
-      "required_elements": [],
-      "criteria": "Evaluate the response against the requested functional requirements, correctness, coverage of edge cases, and stated complexity or test strategy as applicable.",
+      "required_elements": [
+        "goat across",
+        "farmer returns",
+        "wolf",
+        "cabbage"
+      ],
+      "criteria": "Must correctly take goat first, bring goat back when wolf/cabbage is transported, ensuring no invalid pair is left unattended.",
       "max_score": 10
-    }
+    },
+    "reference_solution": "Step 1: Farmer takes Goat across (leaving Wolf and Cabbage).\nStep 2: Farmer returns alone.\nStep 3: Farmer takes Wolf across.\nStep 4: Farmer returns with Goat.\nStep 5: Farmer takes Cabbage across.\nStep 6: Farmer returns alone.\nStep 7: Farmer takes Goat across.\nAll safely across."
   },
   {
-    "category": "UNIT_TESTING",
-    "difficulty": "complex",
-    "description": "Test streaming SSE parser",
-    "prompt": "Write tests for an SSE parser that receives arbitrary network chunks. Cover split event boundaries, multiple data lines, comments, UTF-8 boundaries, usage-only final chunk, [DONE], malformed JSON, and abrupt disconnect.",
-    "id": "UNIT_TESTING_19",
-    "evaluation_type": "rubric",
+    "id": "REASONING_56",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "Solve this probability problem with Bayes' Theorem: A medical test for a rare condition has a 99% sensitivity (true positive rate) and a 95% specificity (true negative rate). The condition affects 0.1% (1 in 1000) of the population. If a patient tests positive, what is the exact posterior probability that they actually have the condition? Show the step-by-step calculation.",
+    "evaluation_type": "deterministic",
+    "description": "Bayes' theorem calculation of medical test positive predictive value",
     "rubric": {
-      "required_elements": [],
-      "criteria": "Evaluate the response against the requested functional requirements, correctness, coverage of edge cases, and stated complexity or test strategy as applicable.",
+      "required_elements": [
+        "Bayes",
+        "0.001",
+        "0.99",
+        "0.05",
+        "1.9%"
+      ],
+      "criteria": "Calculates P(D)=0.001, P(+|D)=0.99, P(+|~D)=0.05, total P(+)=0.05094, and posterior P(D|+)=0.00099/0.05094 ≈ 0.0194 (approx 1.94%).",
       "max_score": 10
-    }
+    },
+    "reference_solution": "P(D) = 0.001, P(~D) = 0.999.\nP(+|D) = 0.99, P(+|~D) = 1 - 0.95 = 0.05.\nP(+) = P(+|D)*P(D) + P(+|~D)*P(~D) = 0.99*0.001 + 0.05*0.999 = 0.00099 + 0.04995 = 0.05094.\nP(D|+) = (0.99 * 0.001) / 0.05094 = 0.00099 / 0.05094 ≈ 0.019434 (approx 1.94%)."
+  },
+  {
+    "id": "REASONING_57",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "Analyze the architectural trade-offs between an Event-Driven Architecture (EDA) and a synchronous REST microservices architecture across four specific dimensions: (1) temporal coupling, (2) tail latency, (3) distributed debugging/observability, and (4) eventual consistency management.",
+    "evaluation_type": "rubric",
+    "description": "System architecture trade-off analysis: EDA vs REST",
+    "rubric": {
+      "required_elements": [
+        "temporal coupling",
+        "tail latency",
+        "observability",
+        "eventual consistency"
+      ],
+      "criteria": "Detailed evaluation covering decoupling vs cascading sync calls, async queue buffering vs synchronous blocking latency, distributed tracing complexity in async queues, and compensating transactions (sagas).",
+      "max_score": 10
+    },
+    "reference_solution": "1. Temporal coupling: REST requires caller and callee to be available simultaneously; EDA decouples time via message brokers.\n2. Tail latency: REST aggregates latency across downstream RPC chains; EDA responds immediately upon broker ingest, decoupling tail latency from slow downstream workers.\n3. Observability: REST is simpler to trace synchronously; EDA requires distributed correlation IDs across asynchronous queues and dead-letter handling.\n4. Consistency: REST leans toward immediate transactional consistency within service boundaries; EDA embraces eventual consistency requiring saga orchestrators or outbox patterns."
+  },
+  {
+    "id": "REASONING_58",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "Derive the asymptotic time complexity of Strassen's matrix multiplication using the Master Theorem. Given the recurrence relation T(n) = 7*T(n/2) + O(n^2), explicitly identify parameters a, b, f(n), calculate the critical exponent log_b(a), compare it to the polynomial degree of f(n), and state the resulting Big-O bound.",
+    "evaluation_type": "deterministic",
+    "description": "Master Theorem derivation of Strassen algorithm",
+    "rubric": {
+      "required_elements": [
+        "a = 7",
+        "b = 2",
+        "log_2(7)",
+        "2.807",
+        "O(n^"
+      ],
+      "criteria": "Identifies a=7, b=2, f(n)=O(n^2). Calculates log_2(7) ≈ 2.807. Since log_2(7) > 2, Case 1 applies, yielding O(n^log_2(7)) ≈ O(n^2.81).",
+      "max_score": 10
+    },
+    "reference_solution": "Recurrence: T(n) = 7*T(n/2) + O(n^2).\nParameters: a = 7, b = 2, f(n) = O(n^2).\nCritical exponent: log_b(a) = log_2(7) ≈ 2.8074.\nComparison: f(n) = O(n^2) is polynomially smaller than n^(log_2(7)) since 2 < 2.8074 (difference epsilon ≈ 0.807).\nBy Case 1 of the Master Theorem, T(n) = Theta(n^(log_2(7))) ≈ O(n^2.807)."
+  },
+  {
+    "id": "REASONING_59",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "On an island of Knights (who always tell the truth) and Knaves (who always lie), you meet two inhabitants, A and B. Inhabitant A states: 'At least one of us is a knave.' Determine the identities of A and B, proving your conclusion by analyzing the truth-value cases.",
+    "evaluation_type": "deterministic",
+    "description": "Knight and Knave formal logic deduction",
+    "rubric": {
+      "required_elements": [
+        "A is a Knight",
+        "B is a Knave",
+        "contradiction"
+      ],
+      "criteria": "Rigorous proof: If A is Knave, the statement 'at least one is a knave' is True, contradicting that Knaves only lie. Therefore A is a Knight (statement is True). Since A is not a Knave, B must be a Knave.",
+      "max_score": 10
+    },
+    "reference_solution": "Case 1: Suppose A is a Knave. Then A's statement must be false. But if A is a Knave, 'at least one of us is a knave' is true, which is a contradiction. Hence, A cannot be a Knave.\nCase 2: A must be a Knight. Since Knights tell the truth, A's statement 'at least one of us is a knave' is true. Since A is a Knight, B must be a Knave.\nConclusion: A is a Knight and B is a Knave."
+  },
+  {
+    "id": "REASONING_60",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "Perform a capacity sizing calculation for a photo service: 100 million Daily Active Users (DAU). Each user uploads an average of 2 photos/day (average 2 MB each) and views 20 photos/day. Calculate: (1) Daily storage ingestion in Terabytes (TB), and (2) Average network egress bandwidth required in Gigabits per second (Gbps) assuming uniform traffic over 24 hours.",
+    "evaluation_type": "deterministic",
+    "description": "Back-of-the-envelope storage and bandwidth sizing calculation",
+    "rubric": {
+      "required_elements": [
+        "400 TB",
+        "4,000 TB",
+        "370",
+        "Gbps"
+      ],
+      "criteria": "Daily ingest: 100M * 2 * 2MB = 400,000,000 MB = 400 TB. Egress: 100M * 20 * 2MB = 4,000 TB/day. Egress in Gbps: 4,000 TB * 8 * 10^12 bits / (86,400 s) ≈ 370 Gbps (or 397 Gbps if using 1024 base).",
+      "max_score": 10
+    },
+    "reference_solution": "1. Daily Storage Ingestion:\n   100,000,000 users * 2 photos/day * 2 MB = 400,000,000 MB = 400 TB / day.\n2. Average Egress Bandwidth:\n   Daily egress volume = 100,000,000 * 20 photos * 2 MB = 4,000,000,000 MB = 4,000 TB = 4 Petabytes / day.\n   Seconds per day = 86,400.\n   Average rate = 4,000 * 10^12 bytes * 8 bits/byte / 86,400 s ≈ 370.37 Gbps (or 397.7 Gbps if 1024-based)."
+  },
+  {
+    "id": "REASONING_61",
+    "category": "REASONING",
+    "difficulty": "clear",
+    "prompt": "Explain the ABA problem in lock-free concurrent programming using Compare-And-Swap (CAS). Provide a clear scenario of how it manifests in a lock-free stack (Treiber stack) popping an element, and describe two concrete engineering solutions (such as tagged pointers/version counters and hazard pointers).",
+    "evaluation_type": "rubric",
+    "description": "Lock-free concurrency ABA problem and solutions",
+    "rubric": {
+      "required_elements": [
+        "CAS",
+        "Compare-And-Swap",
+        "Treiber",
+        "tagged pointer",
+        "version counter",
+        "hazard pointer"
+      ],
+      "criteria": "Explains thread 1 reading A->B, interrupted, memory recycled, thread 2 changing A->B->A, thread 1 CAS succeeding despite corrupted list. Solutions: tagged pointers (ABA counter) or hazard pointers.",
+      "max_score": 10
+    },
+    "reference_solution": "The ABA problem occurs when a thread reads memory location with value A, other threads change it to B and back to A, and the first thread's CAS succeeds assuming no changes occurred.\nIn a Treiber stack: Thread 1 observes Top=A, Next=B. Thread 1 is preempted. Thread 2 pops A, pops B, and pushes A back. Thread 1 resumes and executes CAS(Top, A, B). The CAS succeeds because Top is still A, but B has been freed or reused, corrupting the stack.\nSolutions: (1) Tagged pointers / version counters (packing an incrementing counter with the pointer into a 64/128-bit word). (2) Hazard pointers or epoch-based reclamation preventing reuse while referenced."
+  },
+  {
+    "id": "REASONING_62",
+    "category": "REASONING",
+    "difficulty": "boundary",
+    "prompt": "Design an idempotent payment processing workflow for a distributed checkout system. Specify the state machine states, the exact role of client-generated idempotency keys, how database unique constraints prevent double-charging race conditions, and how transient gateway timeouts should be recovered safely.",
+    "evaluation_type": "rubric",
+    "description": "Distributed systems idempotent payment workflow design",
+    "rubric": {
+      "required_elements": [
+        "idempotency key",
+        "unique constraint",
+        "PENDING",
+        "SUCCESS",
+        "distributed lock"
+      ],
+      "criteria": "Addresses idempotency key uniqueness, atomic insert/lock, state transitions (INITIATED -> PROCESSING -> SUCCESS/FAILED), and polling/reconciliation on timeout.",
+      "max_score": 10
+    },
+    "reference_solution": "1. Idempotency Key: Client sends unique idempotency_key (UUID v4) with checkout request.\n2. Database Unique Constraint: An `idempotency_records` table stores (idempotency_key UNIQUE, status, response_body, created_at).\n3. State Machine: INITIATED -> PROCESSING -> COMPLETED / FAILED.\n4. Concurrency Guard: DB INSERT of key in PENDING state atomically prevents duplicate execution. Concurrent requests with same key encounter constraint violation and wait or poll.\n5. Gateway Timeout Recovery: If upstream gateway times out, state remains PROCESSING. An asynchronous reconciliation job queries the gateway with the payment intent ID to verify actual status before retrying."
+  },
+  {
+    "id": "REASONING_63",
+    "category": "REASONING",
+    "difficulty": "boundary",
+    "prompt": "Explain why Python's Global Interpreter Lock (GIL) does not prevent race conditions in multi-threaded application code. Illustrate this by breaking down how a simple operation like `count += 1` translates into bytecode instructions, and show where thread context switches can interleave to cause lost updates.",
+    "evaluation_type": "rubric",
+    "description": "GIL vs application-level race conditions and bytecode breakdown",
+    "rubric": {
+      "required_elements": [
+        "bytecode",
+        "LOAD_FAST",
+        "INPLACE_ADD",
+        "STORE_FAST",
+        "context switch",
+        "atomicity"
+      ],
+      "criteria": "Explains that the GIL ensures interpreter memory safety (C-level atomicity), not Python bytecode atomicity. Shows `count += 1` involves LOAD, ADD, STORE, where preemption between LOAD and STORE causes lost updates.",
+      "max_score": 10
+    },
+    "reference_solution": "The GIL ensures that the Python interpreter's internal state (reference counts, C extensions) is thread-safe, but it releases and re-acquires the lock periodically (sys.getswitchinterval()).\nBytecode breakdown for `count += 1`:\n1. LOAD_FAST (reads current value of count onto stack)\n2. INPLACE_ADD (adds 1)\n3. STORE_FAST (stores result back to count)\nA thread switch can occur after step 1. If Thread A reads count=5, switches to Thread B which reads count=5, increments to 6, and stores 6; when Thread A resumes, it increments its local 5 to 6 and stores 6. One increment is lost despite the GIL."
+  },
+  {
+    "id": "REASONING_64",
+    "category": "REASONING",
+    "difficulty": "boundary",
+    "prompt": "You are given two empty water jugs with capacities of 3 liters and 5 liters, and an unlimited supply of water. You need to measure out exactly 4 liters. Provide the complete step-by-step sequence of operations, clearly listing the contents of both jugs at each step until 4 liters is achieved.",
+    "evaluation_type": "deterministic",
+    "description": "3-liter and 5-liter water jug riddle",
+    "rubric": {
+      "required_elements": [
+        "3L",
+        "5L",
+        "4 liters",
+        "Step"
+      ],
+      "criteria": "Step-by-step state transitions showing jug contents (3L, 5L) successfully reaching 4L in the 5L jug.",
+      "max_score": 10
+    },
+    "reference_solution": "Method A:\nStep 1: Fill the 5L jug completely. (3L: 0, 5L: 5)\nStep 2: Pour from 5L jug into 3L jug until full. (3L: 3, 5L: 2)\nStep 3: Empty the 3L jug. (3L: 0, 5L: 2)\nStep 4: Pour the 2 liters from 5L jug into 3L jug. (3L: 2, 5L: 0)\nStep 5: Fill the 5L jug completely. (3L: 2, 5L: 5)\nStep 6: Pour from 5L jug into 3L jug until full (transfers 1 liter). (3L: 3, 5L: 4)\nResult: The 5-liter jug now contains exactly 4 liters."
   },
   {
     "category": "REASONING",
     "difficulty": "clear",
     "description": "Evaluate CAP trade-offs",
     "prompt": "A replicated key-value service must remain available during a network partition. Explain which consistency guarantees it must relax under CAP, distinguish CAP consistency from ACID consistency, and give a concrete read/write scenario.",
-    "id": "REASONING_20",
+    "id": "REASONING_65",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1064,7 +1038,7 @@
     "difficulty": "clear",
     "description": "Calculate expected value",
     "prompt": "A system receives 10,000 requests per day. Each request has a 2% chance of causing a $50 incident, and a proposed safeguard reduces that probability to 0.5% while costing $300 per month. Calculate expected monthly incident cost before and after, and assess expected net benefit using 30 days.",
-    "id": "REASONING_21",
+    "id": "REASONING_66",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1077,7 +1051,7 @@
     "difficulty": "clear",
     "description": "Analyze algorithmic complexity",
     "prompt": "Compare a hash-table lookup, balanced binary search tree lookup, and sorted-array binary search in terms of average/worst-case time, memory overhead, update cost, and practical use cases.",
-    "id": "REASONING_22",
+    "id": "REASONING_67",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1090,7 +1064,7 @@
     "difficulty": "clear",
     "description": "Reason about database normalization",
     "prompt": "A table stores order ID, customer details, product details, and repeated product columns. Identify likely normalization problems and propose a normalized relational schema. Explain insertion, update, and deletion anomalies.",
-    "id": "REASONING_23",
+    "id": "REASONING_68",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1103,7 +1077,7 @@
     "difficulty": "clear",
     "description": "Solve scheduling constraint problem",
     "prompt": "Four jobs A, B, C, and D require 2, 3, 4, and 2 hours. A must finish before C; B must finish before D; only one worker is available. Find a minimum-duration schedule and explain why it is optimal.",
-    "id": "REASONING_24",
+    "id": "REASONING_69",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1116,7 +1090,7 @@
     "difficulty": "clear",
     "description": "Compare cache strategies",
     "prompt": "Compare write-through, write-back, and write-around caching. For each, explain read/write latency, consistency risks, failure modes, and an appropriate workload.",
-    "id": "REASONING_25",
+    "id": "REASONING_70",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1129,7 +1103,7 @@
     "difficulty": "clear",
     "description": "Analyze queue stability",
     "prompt": "A service processes 120 jobs per minute while jobs arrive at 100 per minute. Explain whether the queue is stable under these assumptions, estimate how backlog changes over 15 minutes, and discuss what changes if processing capacity fluctuates.",
-    "id": "REASONING_26",
+    "id": "REASONING_71",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1142,7 +1116,7 @@
     "difficulty": "clear",
     "description": "Evaluate API versioning",
     "prompt": "Compare URI versioning, header-based versioning, and additive backward-compatible API evolution. Discuss client migration, caching, observability, and deprecation strategy.",
-    "id": "REASONING_27",
+    "id": "REASONING_72",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1155,7 +1129,7 @@
     "difficulty": "boundary",
     "description": "Calculate retry amplification",
     "prompt": "A service handles 500 incoming requests per second. Each request makes 3 downstream calls, and each downstream call retries up to 2 additional times on failure. Calculate the worst-case downstream call rate if all calls fail and explain retry amplification.",
-    "id": "REASONING_28",
+    "id": "REASONING_73",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1168,7 +1142,7 @@
     "difficulty": "boundary",
     "description": "Analyze consistency in replicated reads",
     "prompt": "A database replicates writes asynchronously to two read replicas. A client writes a value and immediately reads from a randomly selected replica. Explain the stale-read problem and compare read-your-writes sessions, quorum reads, and waiting for replication.",
-    "id": "REASONING_29",
+    "id": "REASONING_74",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1181,7 +1155,7 @@
     "difficulty": "boundary",
     "description": "Compare concurrency control",
     "prompt": "Compare optimistic concurrency control, pessimistic locking, and MVCC for a high-contention inventory update workload. Discuss conflicts, throughput, deadlocks, and correctness.",
-    "id": "REASONING_30",
+    "id": "REASONING_75",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1194,7 +1168,7 @@
     "difficulty": "boundary",
     "description": "Reason about Bayesian false positives",
     "prompt": "A security detector has 98% sensitivity and 97% specificity. Only 0.2% of events are truly malicious. Calculate the probability that an alert is truly malicious and explain why the base rate matters.",
-    "id": "REASONING_31",
+    "id": "REASONING_76",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1207,7 +1181,7 @@
     "difficulty": "boundary",
     "description": "Estimate storage growth",
     "prompt": "A service stores 250,000 records daily at an average serialized size of 1.8 KB. It retains data for 400 days and adds 20% index overhead. Estimate total storage in decimal GB and explain the assumptions.",
-    "id": "REASONING_32",
+    "id": "REASONING_77",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1220,7 +1194,7 @@
     "difficulty": "boundary",
     "description": "Analyze deadlock conditions",
     "prompt": "Two transactions acquire resources R1 and R2 in opposite order. Explain the four Coffman conditions and show how global lock ordering or timeout-based detection changes the deadlock risk.",
-    "id": "REASONING_33",
+    "id": "REASONING_78",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1233,7 +1207,7 @@
     "difficulty": "complex",
     "description": "Design resilience architecture",
     "prompt": "Design a resilient API architecture for a service with two upstream dependencies, a 1-second client deadline, and bursty traffic. Explain timeout budgets, bulkheads, circuit breakers, bounded retries, load shedding, and graceful degradation.",
-    "id": "REASONING_34",
+    "id": "REASONING_79",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
@@ -1246,46 +1220,7 @@
     "difficulty": "complex",
     "description": "Evaluate sharding strategy",
     "prompt": "A multi-tenant database has a few very large tenants and many small tenants. Compare hash sharding, range sharding, and tenant-based sharding. Address hot partitions, rebalancing, cross-shard queries, and tenant isolation.",
-    "id": "REASONING_35",
-    "evaluation_type": "rubric",
-    "rubric": {
-      "required_elements": [],
-      "criteria": "Evaluate the response against the requested functional requirements, correctness, coverage of edge cases, and stated complexity or test strategy as applicable.",
-      "max_score": 10
-    }
-  },
-  {
-    "category": "REASONING",
-    "difficulty": "complex",
-    "description": "Reason about exactly-once processing",
-    "prompt": "A message broker provides at-least-once delivery. Explain why exactly-once business effects require cooperation between consumer state and side effects, and design an idempotent processing approach with transactional storage.",
-    "id": "REASONING_36",
-    "evaluation_type": "rubric",
-    "rubric": {
-      "required_elements": [],
-      "criteria": "Evaluate the response against the requested functional requirements, correctness, coverage of edge cases, and stated complexity or test strategy as applicable.",
-      "max_score": 10
-    }
-  },
-  {
-    "category": "REASONING",
-    "difficulty": "complex",
-    "description": "Evaluate architecture under uncertain traffic",
-    "prompt": "A system is expected to grow from 1,000 to 100,000 daily active users, but traffic forecasts are uncertain. Propose an architecture that avoids premature complexity while preserving migration paths. Explain measurable triggers for adding queues, caches, and service boundaries.",
-    "id": "REASONING_37",
-    "evaluation_type": "rubric",
-    "rubric": {
-      "required_elements": [],
-      "criteria": "Evaluate the response against the requested functional requirements, correctness, coverage of edge cases, and stated complexity or test strategy as applicable.",
-      "max_score": 10
-    }
-  },
-  {
-    "category": "REASONING",
-    "difficulty": "complex",
-    "description": "Analyze tail latency",
-    "prompt": "A request fans out to 20 independent services in parallel, each with a 99th-percentile latency of 300 ms. Explain why overall request tail latency can be much worse than one service's p99, and discuss hedged requests, fanout reduction, and deadlines.",
-    "id": "REASONING_11",
+    "id": "REASONING_80",
     "evaluation_type": "rubric",
     "rubric": {
       "required_elements": [],
