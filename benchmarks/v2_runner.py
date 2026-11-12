@@ -27,6 +27,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import httpx
+from dotenv import load_dotenv
 
 from app.routing import CLASSIFIER_SYSTEM_PROMPT, CODING, UNIT_TESTING, REASONING
 from benchmarks.openrouter_v2 import (
@@ -374,6 +375,8 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
         generation_cfg = config["generation"]
         max_cost = float(args.max_cost_usd if args.max_cost_usd is not None
                          else config["execution"]["default_max_cost_usd"])
+        if max_cost <= 0:
+            raise ValueError("--max-cost-usd must be greater than zero.")
         delay = float(config["execution"].get("delay_between_prompts_seconds", 0.5))
         call_records: List[Dict[str, Any]] = []
         prompt_records: List[Dict[str, Any]] = []
@@ -502,8 +505,14 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
         router_cost_complete = len(router_costs) == router_call_count and all(v is not None for v in router_costs)
         baseline_total = sum(float(v) for v in baseline_costs if v is not None)
         router_total = sum(float(v) for v in router_costs if v is not None)
+        matched_prompts_complete = (
+            len(prompt_records) == len(dataset)
+            and all("baseline" in row and "classifier" in row and "downstream" in row
+                    for row in prompt_records)
+        )
         savings = None
-        if baseline_cost_complete and router_cost_complete and baseline_total > 0:
+        if (matched_prompts_complete and baseline_cost_complete
+                and router_cost_complete and baseline_total > 0):
             savings = round((baseline_total - router_total) / baseline_total * 100.0, 4)
 
         summary = {
@@ -535,6 +544,7 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
                 "modelsync_classifier_cost_included": True,
                 "baseline_cost_complete": baseline_cost_complete,
                 "modelsync_cost_complete": router_cost_complete,
+                "matched_80_prompt_comparison_complete": matched_prompts_complete,
                 "actual_savings_percentage": savings,
                 "catalogue_estimates_are_not_included_in_actual_cost": True,
                 "budget_guard_spend_usd": round(budget_spend, 10),
@@ -565,9 +575,13 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             "routed_category", "selected_model", "classification_correct",
             "model_selection_correct", "baseline_status", "baseline_model",
             "baseline_generation_id", "baseline_prompt_tokens", "baseline_completion_tokens",
-            "baseline_actual_cost_usd", "classifier_status", "classifier_model",
-            "classifier_generation_id", "classifier_actual_cost_usd", "downstream_status",
-            "downstream_model", "downstream_generation_id", "downstream_actual_cost_usd",
+            "baseline_actual_cost_usd", "baseline_catalog_estimate_usd", "baseline_reconciliation",
+            "classifier_status", "classifier_model", "classifier_generation_id",
+            "classifier_prompt_tokens", "classifier_completion_tokens", "classifier_actual_cost_usd",
+            "classifier_catalog_estimate_usd", "classifier_reconciliation", "downstream_status",
+            "downstream_model", "downstream_generation_id", "downstream_prompt_tokens",
+            "downstream_completion_tokens", "downstream_actual_cost_usd",
+            "downstream_catalog_estimate_usd", "downstream_reconciliation",
         ]
         with csv_path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=fields)
@@ -594,14 +608,24 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
                     "baseline_prompt_tokens": base_usage.get("prompt_tokens"),
                     "baseline_completion_tokens": base_usage.get("completion_tokens"),
                     "baseline_actual_cost_usd": base.get("actual_cost_usd"),
+                    "baseline_catalog_estimate_usd": base.get("catalog_estimated_cost_usd"),
+                    "baseline_reconciliation": base.get("reconciliation_status"),
                     "classifier_status": classify.get("status"),
                     "classifier_model": classify.get("actual_model") or classify.get("requested_model"),
                     "classifier_generation_id": classify.get("generation_id"),
+                    "classifier_prompt_tokens": classify_usage.get("prompt_tokens"),
+                    "classifier_completion_tokens": classify_usage.get("completion_tokens"),
                     "classifier_actual_cost_usd": classify.get("actual_cost_usd"),
+                    "classifier_catalog_estimate_usd": classify.get("catalog_estimated_cost_usd"),
+                    "classifier_reconciliation": classify.get("reconciliation_status"),
                     "downstream_status": downstream.get("status"),
                     "downstream_model": downstream.get("actual_model") or downstream.get("requested_model"),
                     "downstream_generation_id": downstream.get("generation_id"),
+                    "downstream_prompt_tokens": down_usage.get("prompt_tokens"),
+                    "downstream_completion_tokens": down_usage.get("completion_tokens"),
                     "downstream_actual_cost_usd": downstream.get("actual_cost_usd"),
+                    "downstream_catalog_estimate_usd": downstream.get("catalog_estimated_cost_usd"),
+                    "downstream_reconciliation": downstream.get("reconciliation_status"),
                 })
         LOGGER.info("Evaluation V2 artifacts saved to %s", run_dir)
         return summary
@@ -639,6 +663,7 @@ def main() -> None:
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    load_dotenv(PROJECT_ROOT / ".env")
     if args.catalog_preflight:
         result = asyncio.run(catalog_preflight(Path(args.config), Path(args.output_dir)))
         print(json.dumps(result, indent=2))
