@@ -28,7 +28,19 @@ Each item has `id`, `category`, `difficulty` (`clear`, `boundary`, `complex`), `
 
 ## Configure exact paid model IDs
 
-All five exact OpenRouter model IDs must be configured. IDs are intentionally blank until verified against the current catalogue. V2 rejects unknown, unpriced, or zero-priced model entries, because this is a paid-model experiment.
+The current selected model mapping is recorded in `benchmarks/evaluation_v2.json`:
+
+| Role | OpenRouter model ID | Screenshot reference input / output per 1M tokens |
+|---|---|---:|
+| Classifier | `z-ai/glm-5.3-flash` | $0.0399 / $0.0784 |
+| CODING | `z-ai/glm-5.3-flash` | $0.0399 / $0.0784 |
+| UNIT_TESTING | `deepseek/deepseek-v4-flash-0731` | $0.0434 / $0.30 |
+| REASONING | `openai/gpt-5.6-luna` | $0.20 / $1.20 |
+| Baseline | `anthropic/claude-sonnet-5` | $2.00 / $10.00 |
+
+The reference prices above were transcribed from user-provided OpenRouter screenshots dated November 12, 2026. They are retained as a reference only. Immediately before a run, use the current OpenRouter catalogue snapshot as the recorded catalogue price source, and use reconciled generation records for actual billed cost.
+
+V2 rejects unknown, unpriced, or zero-priced model entries, because this is a paid-model experiment. Model IDs can be overridden with environment variables if a model is replaced.
 
 Set these in `.env`:
 
@@ -53,7 +65,7 @@ Separate baseline and router keys are recommended so OpenRouter Activity can sep
 python -m pytest tests/test_evaluation_v2.py -q
 ```
 
-2. After model IDs have been configured, capture the public model catalogue and pricing snapshot. This does not make inference calls:
+2. After reviewing the selected model IDs, capture the public model catalogue and execution-time pricing snapshot. This does not make inference calls. Confirm the catalogue includes every exact ID and compare its prices with the screenshot reference stored in the config:
 
 ```powershell
 python -m benchmarks.v2_runner --catalog-preflight
