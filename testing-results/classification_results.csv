@@ -1,0 +1,31 @@
+test_id,prompt_summary,expected_category,predicted_category,selected_model,expected_model,result,latency_s,prediction_source,raw_output,error
+CODING_01,O(1) LRU Cache implementation,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,1.7394,LIVE_CLASSIFIER,CODING,None
+CODING_02,Binary search on rotated sorted array,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,1.7366,LIVE_CLASSIFIER,CODING,None
+CODING_03,Bug diagnosis and correction in binary search,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,1.0315,LIVE_CLASSIFIER,CODING,None
+CODING_04,Fast exponentiation algorithm,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,0.9314,LIVE_CLASSIFIER,CODING,None
+CODING_05,Thread-safe singleton with double-checked locking,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,3.6018,LIVE_CLASSIFIER,CODING,None
+CODING_06,SemVer parser implementation,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,8.4714,LIVE_CLASSIFIER,,None
+CODING_07,Async generator with pagination and rate limit backoff,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,1.87,LIVE_CLASSIFIER,CODING,None
+CODING_08,Kahn's algorithm topological sort implementation,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,1.0762,LIVE_CLASSIFIER,CODING,None
+CODING_09,Thread-safe Token Bucket rate limiter class,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,6.4511,LIVE_CLASSIFIER,CODING,None
+CODING_10,Refactoring file scanning into safe Python generator,CODING,CODING,qwen/qwen3.8-27b:free,qwen/qwen3.8-27b:free,CORRECT,4.9311,LIVE_CLASSIFIER,CODING,None
+TESTING_01,Pytest suite for input validator,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,2.0713,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_02,Mocking external payment gateway with unittest.mock,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,3.1855,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_03,Pytest fixture for SQLite and CRUD tests,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,2.5555,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_04,Jest unit test suite for currency formatter,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,3.2092,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_05,Parametrized pytest tests for leap year rules,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,0.9255,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_06,FastAPI TestClient endpoint tests,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,66.4889,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_07,Edge-case defect detection tests for binary search,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,18.8462,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_08,100% branch coverage unit test suite,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,0.813,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_09,Concurrent multi-thread race condition test,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,1.6818,LIVE_CLASSIFIER,UNIT_TESTING,None
+TESTING_10,Async unit test with mock retry sequencing,UNIT_TESTING,UNIT_TESTING,google/gemma-4-26b-a4b-it:free,google/gemma-4-26b-a4b-it:free,CORRECT,6.8737,LIVE_CLASSIFIER,UNIT_TESTING,None
+REASONING_01,"Wolf, goat, cabbage river crossing problem",REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,5.739,LIVE_CLASSIFIER,REASONING,None
+REASONING_02,Bayes' theorem calculation of medical test positive predictive value,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,5.4193,LIVE_CLASSIFIER,REASONING,None
+REASONING_03,System architecture trade-off analysis: EDA vs REST,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,5.5816,LIVE_CLASSIFIER,REASONING,None
+REASONING_04,Master Theorem derivation of Strassen algorithm,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,2.4553,LIVE_CLASSIFIER,REASONING,None
+REASONING_05,Knight and Knave formal logic deduction,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,10.3436,LIVE_CLASSIFIER,REASONING,None
+REASONING_06,Back-of-the-envelope storage and bandwidth sizing calculation,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,4.1811,LIVE_CLASSIFIER,REASONING,None
+REASONING_07,Lock-free concurrency ABA problem and solutions,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,11.5272,LIVE_CLASSIFIER,REASONING,None
+REASONING_08,Distributed systems idempotent payment workflow design,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,1.4894,LIVE_CLASSIFIER,REASONING,None
+REASONING_09,GIL vs application-level race conditions and bytecode breakdown,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,1.3042,LIVE_CLASSIFIER,REASONING,None
+REASONING_10,3-liter and 5-liter water jug riddle,REASONING,REASONING,nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-ultra-550b-a55b:free,CORRECT,1.5572,LIVE_CLASSIFIER,REASONING,None

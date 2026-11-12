@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-10-28T11:52:52.602905+00:00",
+  "unit_tests": {
+    "command": "C:\\Python314\\python.exe -m pytest tests -v --tb=short",
+    "exit_code": 0,
+    "duration_seconds": 11.005,
+    "total_tests": 34,
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "status": "PASSED"
+  },
+  "api_tests_count": 15,
+  "api_tests_passed": 15,
+  "classification_accuracy_pct": 100.0,
+  "classification_total": 30,
+  "classification_correct": 30,
+  "performance_scenarios_tested": 5,
+  "failure_scenarios_tested": 12
+}

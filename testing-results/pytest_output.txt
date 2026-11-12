@@ -1,0 +1,46 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.1.1, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\abcda\Downloads\38833FF26BA1D.UnigramPreview_g9c9v27vpyspw!App\Model-Sync_LLM_ROUTER\Model-Sync_LLM_ROUTER\llm-composer-coding-agent
+plugins: anyio-4.13.0, Faker-40.32.0, hypothesis-6.158.0, benchmark-5.3.0, cov-7.1.0, django-4.12.0
+collecting ... collected 34 items
+
+tests/test_benchmark.py::test_select_target_model_coding PASSED          [  2%]
+tests/test_benchmark.py::test_select_target_model_testing PASSED         [  5%]
+tests/test_benchmark.py::test_select_target_model_reasoning PASSED       [  8%]
+tests/test_benchmark.py::test_select_target_model_unknown_fallback PASSED [ 11%]
+tests/test_benchmark.py::test_token_cost_calculation PASSED              [ 14%]
+tests/test_benchmark.py::test_token_cost_zero_for_free_model PASSED      [ 17%]
+tests/test_benchmark.py::test_token_cost_paid_counterpart_simulation PASSED [ 20%]
+tests/test_benchmark.py::test_zero_cost_baseline_savings_handling PASSED [ 23%]
+tests/test_benchmark.py::test_positive_savings_percentage PASSED         [ 26%]
+tests/test_benchmark.py::test_missing_model_price_fallback PASSED        [ 29%]
+tests/test_benchmark.py::test_classification_metrics_perfect_accuracy PASSED [ 32%]
+tests/test_benchmark.py::test_classification_metrics_with_errors PASSED  [ 35%]
+tests/test_benchmark.py::test_compute_latency_percentiles PASSED         [ 38%]
+tests/test_benchmark.py::test_compute_latency_percentiles_empty PASSED   [ 41%]
+tests/test_benchmark.py::test_python_syntax_checker PASSED               [ 44%]
+tests/test_benchmark.py::test_evaluator_empty_response PASSED            [ 47%]
+tests/test_benchmark.py::test_evaluator_valid_coding_response PASSED     [ 50%]
+tests/test_benchmark.py::test_run_benchmark_dry_run_generates_valid_artifacts PASSED [ 52%]
+tests/test_router.py::test_parse_label[ coding -CODING] PASSED           [ 55%]
+tests/test_router.py::test_parse_label[**REASONING**-REASONING] PASSED   [ 58%]
+tests/test_router.py::test_parse_label[-CODING] PASSED                   [ 61%]
+tests/test_router.py::test_parse_label[CODING-CODING] PASSED             [ 64%]
+tests/test_router.py::test_parse_label[REASONING!-REASONING] PASSED      [ 67%]
+tests/test_router.py::test_parse_label[The answer is UNIT_TESTING-UNIT_TESTING] PASSED [ 70%]
+tests/test_router.py::test_parse_label[UNIT_TESTING.-UNIT_TESTING] PASSED [ 73%]
+tests/test_router.py::test_parse_label[garbage-CODING] PASSED            [ 76%]
+tests/test_router.py::test_extract_last_user_content PASSED              [ 79%]
+tests/test_router.py::test_render_sse_format PASSED                      [ 82%]
+tests/test_router.py::test_collect_stream_merges_deltas PASSED           [ 85%]
+tests/test_router.py::test_validation_rejects_bad_role PASSED            [ 88%]
+tests/test_router.py::test_health_endpoint PASSED                        [ 91%]
+tests/test_router.py::test_models_endpoint_lists_smart_router PASSED     [ 94%]
+tests/test_router.py::test_auth_required_when_configured PASSED          [ 97%]
+tests/test_router.py::test_chat_completions_routes_and_injects_system_prompt PASSED [100%]
+
+============================= 34 passed in 5.98s ==============================
+

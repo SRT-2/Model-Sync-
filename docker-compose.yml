@@ -1,0 +1,23 @@
+services:
+  router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llm-smart-router:2.0.0
+    container_name: llm-smart-router
+    # The container always listens on 8000 internally; ROUTER_PORT on the
+    # host maps to it, so `docker run -p` semantics stay predictable.
+    environment:
+      - ROUTER_PORT=8000
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - ROUTER_API_KEY=${ROUTER_API_KEY:-}
+      - TOGETHER_BASE_URL=${TOGETHER_BASE_URL:-https://api.together.xyz/v1}
+      - CODING_MODEL=${CODING_MODEL:-zai-org/GLM-5.1}
+      - TESTING_MODEL=${TESTING_MODEL:-moonshotai/Kimi-K2.6}
+      - REASONING_MODEL=${REASONING_MODEL:-Qwen/Qwen3.7-Max}
+      - CLASSIFIER_MODEL=${CLASSIFIER_MODEL:-Qwen/Qwen3.7-Max}
+    ports:
+      - "${ROUTER_PORT:-8000}:8000"
+    env_file:
+      - .env
+    restart: unless-stopped

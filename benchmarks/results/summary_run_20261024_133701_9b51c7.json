@@ -1,0 +1,111 @@
+{
+  "run_id": "run_20261024_133701_9b51c7",
+  "timestamp_utc": "2026-10-24T13:37:01.990169+00:00",
+  "mode": "dry-run",
+  "live": false,
+  "dataset_size": 30,
+  "configuration": {
+    "baseline_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "coding_model": "qwen/qwen3.8-27b:free",
+    "testing_model": "google/gemma-4-26b-a4b-it:free",
+    "reasoning_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "classifier_model": "poolside/laguna-s-2.1:free",
+    "provider_name": "openrouter"
+  },
+  "routing_performance": {
+    "classification_accuracy": 0.8333,
+    "model_selection_correctness": 0.8333,
+    "macro_precision": 0.8745,
+    "macro_recall": 0.8333,
+    "macro_f1": 0.8175,
+    "confusion_matrix": {
+      "CODING": {
+        "CODING": 10,
+        "UNIT_TESTING": 0,
+        "REASONING": 0
+      },
+      "UNIT_TESTING": {
+        "CODING": 0,
+        "UNIT_TESTING": 10,
+        "REASONING": 0
+      },
+      "REASONING": {
+        "CODING": 4,
+        "UNIT_TESTING": 1,
+        "REASONING": 5
+      }
+    },
+    "category_metrics": {
+      "CODING": {
+        "true_positive": 10,
+        "false_positive": 4,
+        "false_negative": 0,
+        "precision": 0.7143,
+        "recall": 1.0,
+        "f1": 0.8333,
+        "support": 10
+      },
+      "UNIT_TESTING": {
+        "true_positive": 10,
+        "false_positive": 1,
+        "false_negative": 0,
+        "precision": 0.9091,
+        "recall": 1.0,
+        "f1": 0.9524,
+        "support": 10
+      },
+      "REASONING": {
+        "true_positive": 5,
+        "false_positive": 0,
+        "false_negative": 5,
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6667,
+        "support": 10
+      }
+    }
+  },
+  "quality_performance": {
+    "baseline_mean_score": 2.82,
+    "router_mean_score": 2.82,
+    "baseline_pass_rate": 0.0,
+    "router_pass_rate": 0.0,
+    "mean_score_difference": 0.0
+  },
+  "latency_performance": {
+    "baseline_latency": {
+      "count": 30,
+      "mean": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0002
+    },
+    "router_total_latency": {
+      "count": 30,
+      "mean": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    }
+  },
+  "cost_analysis": {
+    "actual_billed": {
+      "baseline_total_usd": 0.0,
+      "router_total_usd": 0.0,
+      "savings_percentage": null,
+      "notes": "Verified actual upstream billed cost returned by provider."
+    },
+    "simulated_paid_catalog": {
+      "baseline_total_usd": 0.00828,
+      "router_total_usd": 0.004995,
+      "savings_percentage": 39.67,
+      "notes": "Simulated cost using official published pricing catalog (date: 2026-10-24)."
+    }
+  }
+}

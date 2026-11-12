@@ -1,0 +1,328 @@
+{
+  "classifier_model": "poolside/laguna-s-2.1:free",
+  "total_prompts": 30,
+  "classification_accuracy": 0.9333,
+  "model_selection_correctness": 0.9333,
+  "macro_precision": 0.9444,
+  "macro_recall": 0.9333,
+  "macro_f1": 0.9327,
+  "confusion_matrix": {
+    "CODING": {
+      "CODING": 10,
+      "UNIT_TESTING": 0,
+      "REASONING": 0
+    },
+    "UNIT_TESTING": {
+      "CODING": 0,
+      "UNIT_TESTING": 10,
+      "REASONING": 0
+    },
+    "REASONING": {
+      "CODING": 2,
+      "UNIT_TESTING": 0,
+      "REASONING": 8
+    }
+  },
+  "category_metrics": {
+    "CODING": {
+      "true_positive": 10,
+      "false_positive": 2,
+      "false_negative": 0,
+      "precision": 0.8333,
+      "recall": 1.0,
+      "f1": 0.9091,
+      "support": 10
+    },
+    "UNIT_TESTING": {
+      "true_positive": 10,
+      "false_positive": 0,
+      "false_negative": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 10
+    },
+    "REASONING": {
+      "true_positive": 8,
+      "false_positive": 0,
+      "false_negative": 2,
+      "precision": 1.0,
+      "recall": 0.8,
+      "f1": 0.8889,
+      "support": 10
+    }
+  },
+  "mean_latency_s": 2.2258,
+  "details": [
+    {
+      "prompt_id": "CODING_01",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 3.2823
+    },
+    {
+      "prompt_id": "CODING_02",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 3.2702
+    },
+    {
+      "prompt_id": "CODING_03",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 0.7642
+    },
+    {
+      "prompt_id": "CODING_04",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 1.7398
+    },
+    {
+      "prompt_id": "CODING_05",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 2.1732
+    },
+    {
+      "prompt_id": "CODING_06",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 1.8012
+    },
+    {
+      "prompt_id": "CODING_07",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 3.8016
+    },
+    {
+      "prompt_id": "CODING_08",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 2.5534
+    },
+    {
+      "prompt_id": "CODING_09",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 1.9577
+    },
+    {
+      "prompt_id": "CODING_10",
+      "expected_category": "CODING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "qwen/qwen3.8-27b:free",
+      "model_correct": true,
+      "latency_s": 1.655
+    },
+    {
+      "prompt_id": "TESTING_01",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 2.8217
+    },
+    {
+      "prompt_id": "TESTING_02",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 1.9046
+    },
+    {
+      "prompt_id": "TESTING_03",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 4.677
+    },
+    {
+      "prompt_id": "TESTING_04",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 0.7697
+    },
+    {
+      "prompt_id": "TESTING_05",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 2.0
+    },
+    {
+      "prompt_id": "TESTING_06",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 1.2788
+    },
+    {
+      "prompt_id": "TESTING_07",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 1.1946
+    },
+    {
+      "prompt_id": "TESTING_08",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 2.8272
+    },
+    {
+      "prompt_id": "TESTING_09",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 4.2952
+    },
+    {
+      "prompt_id": "TESTING_10",
+      "expected_category": "UNIT_TESTING",
+      "predicted_category": "UNIT_TESTING",
+      "selected_model": "google/gemma-4-26b-a4b-it:free",
+      "expected_model": "google/gemma-4-26b-a4b-it:free",
+      "model_correct": true,
+      "latency_s": 2.6009
+    },
+    {
+      "prompt_id": "REASONING_01",
+      "expected_category": "REASONING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": false,
+      "latency_s": 2.3775
+    },
+    {
+      "prompt_id": "REASONING_02",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 1.8964
+    },
+    {
+      "prompt_id": "REASONING_03",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 0.9979
+    },
+    {
+      "prompt_id": "REASONING_04",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 1.9694
+    },
+    {
+      "prompt_id": "REASONING_05",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 2.3598
+    },
+    {
+      "prompt_id": "REASONING_06",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 0.775
+    },
+    {
+      "prompt_id": "REASONING_07",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 2.5459
+    },
+    {
+      "prompt_id": "REASONING_08",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 2.8412
+    },
+    {
+      "prompt_id": "REASONING_09",
+      "expected_category": "REASONING",
+      "predicted_category": "REASONING",
+      "selected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": true,
+      "latency_s": 1.8975
+    },
+    {
+      "prompt_id": "REASONING_10",
+      "expected_category": "REASONING",
+      "predicted_category": "CODING",
+      "selected_model": "qwen/qwen3.8-27b:free",
+      "expected_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "model_correct": false,
+      "latency_s": 1.7459
+    }
+  ]
+}

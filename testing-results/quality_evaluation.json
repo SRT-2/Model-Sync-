@@ -1,0 +1,98 @@
+[
+  {
+    "eval_id": "CODING_EVAL",
+    "category": "CODING",
+    "prompt": "Write a Python function `two_sum(nums: list[int], target: int) -> list[int]` in O(n) time with docstrings.",
+    "routed_category": "CODING",
+    "routed_model": "qwen/qwen3.8-27b:free",
+    "router_status": "FAILED: 502: upstream_api_error: Error code: 404 - {'error': {'message': 'This model is unavailable for free. The paid version is available now - use this slug instead: qwen/qwen3.8-27b', 'code': 404}, 'user_id': 'user_3K5qBbdY4VmcVf5EKnLLFwpjQhN'}",
+    "router_score_5": 1.0,
+    "router_rubric": {
+      "relevance": 1,
+      "correctness": 1,
+      "completeness": 1,
+      "adherence": 1,
+      "usefulness": 1,
+      "appropriateness": 1
+    },
+    "router_latency_s": 0.05,
+    "router_response_snippet": "",
+    "baseline_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "baseline_status": "OK",
+    "baseline_score_5": 4.67,
+    "baseline_rubric": {
+      "relevance": 5,
+      "correctness": 5,
+      "completeness": 4,
+      "adherence": 5,
+      "usefulness": 5,
+      "appropriateness": 4
+    },
+    "baseline_latency_s": 5.27,
+    "baseline_response_snippet": "```python def two_sum(nums: list[int], target: int) -> list[int]:     \"\"\"     Finds the indices of the two numbers in `nums` that add up to `target`. "
+  },
+  {
+    "eval_id": "TESTING_EVAL",
+    "category": "UNIT_TESTING",
+    "prompt": "Write pytest test cases for a bank account withdrawal method, including overdraft assertion with pytest.raises.",
+    "routed_category": "UNIT_TESTING",
+    "routed_model": "google/gemma-4-26b-a4b-it:free",
+    "router_status": "FAILED: 502: upstream_api_error: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'google/gemma-4-26b-a4b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Google AI Studio', 'is_byok': False, 'provider_error_code': '429', 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shortly, add your own provider key (https://openrouter.ai/settings/integrations), or route to another provider with provider routing: https://openrouter.ai/docs/features/provider-routing'}}, 'user_id': 'user_3K5qBbdY4VmcVf5EKnLLFwpjQhN'}",
+    "router_score_5": 1.0,
+    "router_rubric": {
+      "relevance": 1,
+      "correctness": 1,
+      "completeness": 1,
+      "adherence": 1,
+      "usefulness": 1,
+      "appropriateness": 1
+    },
+    "router_latency_s": 3.06,
+    "router_response_snippet": "",
+    "baseline_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "baseline_status": "OK",
+    "baseline_score_5": 4.67,
+    "baseline_rubric": {
+      "relevance": 5,
+      "correctness": 5,
+      "completeness": 4,
+      "adherence": 5,
+      "usefulness": 5,
+      "appropriateness": 4
+    },
+    "baseline_latency_s": 6.98,
+    "baseline_response_snippet": "Here is a complete, runnable example including the **`BankAccount` class implementation** and the **`pytest` test suite**.  ### 1. The Implementation "
+  },
+  {
+    "eval_id": "REASONING_EVAL",
+    "category": "REASONING",
+    "prompt": "Explain the CAP theorem and discuss the trade-offs of choosing CP vs AP in distributed database design.",
+    "routed_category": "REASONING",
+    "routed_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "router_status": "OK",
+    "router_score_5": 4.83,
+    "router_rubric": {
+      "relevance": 5,
+      "correctness": 5,
+      "completeness": 4,
+      "adherence": 5,
+      "usefulness": 5,
+      "appropriateness": 5
+    },
+    "router_latency_s": 6.14,
+    "router_response_snippet": "### The CAP Theorem: A Foundational Principle  The **CAP Theorem**, proposed by Eric Brewer in 2000 and formally proven by Seth Gilbert and Nancy Lync",
+    "baseline_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "baseline_status": "OK",
+    "baseline_score_5": 4.67,
+    "baseline_rubric": {
+      "relevance": 5,
+      "correctness": 5,
+      "completeness": 4,
+      "adherence": 5,
+      "usefulness": 5,
+      "appropriateness": 4
+    },
+    "baseline_latency_s": 8.19,
+    "baseline_response_snippet": "The user wants an explanation of the CAP theorem and a discussion on the trade-offs between CP (Consistency/Partition Tolerance) and AP (Availability/"
+  }
+]
