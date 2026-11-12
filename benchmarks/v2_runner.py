@@ -451,7 +451,7 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             row["routed_category"] = routed_category
             row["selected_model"] = selected_model
             row["classification_correct"] = predicted == category
-            row["model_selection_correct"] = selected_model == {
+            row["model_selection_correct"] = predicted is not None and selected_model == {
                 CODING: models["coding"],
                 UNIT_TESTING: models["unit_testing"],
                 REASONING: models["reasoning"],
