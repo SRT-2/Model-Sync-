@@ -1,0 +1,57 @@
+{
+  "evaluation_version": "2.0",
+  "provider": {
+    "name": "openrouter",
+    "base_url": "https://openrouter.ai/api/v1",
+    "allow_fallbacks": false,
+    "request_timeout_seconds": 120,
+    "generation_reconcile_attempts": 3,
+    "generation_reconcile_delay_seconds": 0.5
+  },
+  "dataset": {
+    "path": "benchmarks/dataset_v2_80.json",
+    "expected_total": 80,
+    "expected_categories": {
+      "CODING": 27,
+      "UNIT_TESTING": 27,
+      "REASONING": 26
+    },
+    "expected_unique_ids": true,
+    "expected_unique_prompts": true
+  },
+  "models": {
+    "classifier": "",
+    "coding": "",
+    "unit_testing": "",
+    "reasoning": "",
+    "baseline": ""
+  },
+  "generation": {
+    "temperature": 0.0,
+    "max_output_tokens": 500,
+    "classifier_temperature": 0.0,
+    "classifier_max_output_tokens": 20,
+    "include_usage": true
+  },
+  "execution": {
+    "default_max_cost_usd": 1.0,
+    "delay_between_prompts_seconds": 0.5,
+    "streaming_for_cost_comparison": false,
+    "response_quality_scoring": false
+  },
+  "accounting": {
+    "reconcile_each_generation": true,
+    "save_raw_generation_records": true,
+    "actual_cost_source_priority": [
+      "generation_record.total_cost",
+      "generation_record.cost",
+      "completion_response.usage.cost"
+    ],
+    "catalog_estimates_are_separate_from_actual_billing": true
+  },
+  "secrets": {
+    "api_key_env": "OPENROUTER_API_KEY",
+    "baseline_api_key_env": "OPENROUTER_BASELINE_API_KEY",
+    "router_api_key_env": "OPENROUTER_ROUTER_API_KEY"
+  }
+}
