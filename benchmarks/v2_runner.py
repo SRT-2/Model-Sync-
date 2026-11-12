@@ -115,6 +115,15 @@ def make_price_snapshot(catalog: Dict[str, Any], models: Dict[str, str]) -> Dict
         if not entry:
             raise ValueError(f"Model ID is not present in OpenRouter catalogue: {role}={model_id}")
         pricing = entry.get("pricing") or {}
+        prompt_rate = _decimal(pricing.get("prompt"))
+        completion_rate = _decimal(pricing.get("completion"))
+        if prompt_rate is None or completion_rate is None:
+            raise ValueError(f"Model {model_id} is missing prompt/completion catalogue prices.")
+        if prompt_rate <= 0 or completion_rate <= 0:
+            raise ValueError(
+                f"Model {model_id} does not have positive paid input and output rates. "
+                "Evaluation V2 requires paid model endpoints."
+            )
         selected[role] = {
             "id": entry.get("id"),
             "name": entry.get("name"),
