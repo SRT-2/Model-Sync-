@@ -123,3 +123,21 @@ def test_pricing_snapshot_rejects_free_model_endpoints() -> None:
 
 def test_missing_actual_cost_is_not_treated_as_zero() -> None:
     assert extract_actual_cost({"usage": {"prompt_tokens": 10, "completion_tokens": 2}}) is None
+
+def test_temperature_is_sent_only_when_supported_by_catalogue() -> None:
+    from benchmarks.v2_runner import temperature_for_model
+
+    snapshot = {
+        "models": {
+            "supports_temp": {
+                "id": "vendor/model-a",
+                "supported_parameters": ["temperature", "max_tokens"],
+            },
+            "no_temp": {
+                "id": "vendor/model-b",
+                "supported_parameters": ["max_tokens", "reasoning"],
+            },
+        }
+    }
+    assert temperature_for_model(snapshot, "vendor/model-a", 0.0) == 0.0
+    assert temperature_for_model(snapshot, "vendor/model-b", 0.0) is None
