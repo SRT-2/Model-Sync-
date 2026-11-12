@@ -106,3 +106,20 @@ def test_catalog_estimate_is_separate_and_uses_per_token_catalogue_prices() -> N
         snapshot,
     )
     assert estimate == pytest.approx(0.0002)
+
+def test_pricing_snapshot_rejects_free_model_endpoints() -> None:
+    catalogue = {
+        "data": [{
+            "id": "vendor/free-model",
+            "name": "Free Model",
+            "pricing": {"prompt": "0", "completion": "0"},
+        }]
+    }
+    models = {role: "vendor/free-model" for role in
+              ("classifier", "coding", "unit_testing", "reasoning", "baseline")}
+    with pytest.raises(ValueError, match="paid model endpoints"):
+        make_price_snapshot(catalogue, models)
+
+
+def test_missing_actual_cost_is_not_treated_as_zero() -> None:
+    assert extract_actual_cost({"usage": {"prompt_tokens": 10, "completion_tokens": 2}}) is None
