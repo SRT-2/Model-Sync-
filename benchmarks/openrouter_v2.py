@@ -51,16 +51,19 @@ class OpenRouterClient:
         return response.json()
 
     async def complete(self, model: str, messages: list[dict[str, str]],
-                       temperature: float, max_tokens: int) -> Dict[str, Any]:
+                       temperature: Optional[float], max_tokens: int) -> Dict[str, Any]:
         body = {
             "model": model,
             "messages": messages,
-            "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": False,
             "usage": {"include": True},
             "provider": {"allow_fallbacks": self.allow_fallbacks},
         }
+        # Some reasoning models do not accept temperature. Omit it unless
+        # the catalogue explicitly lists it as a supported parameter.
+        if temperature is not None:
+            body["temperature"] = temperature
         started = time.perf_counter()
         response = await self.http.post("/chat/completions", json=body)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
