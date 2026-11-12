@@ -140,6 +140,19 @@ def make_price_snapshot(catalog: Dict[str, Any], models: Dict[str, str]) -> Dict
     }
 
 
+
+def temperature_for_model(
+    price_snapshot: Dict[str, Any], model_id: str, configured_temperature: float
+) -> Optional[float]:
+    """Return configured temperature only when the model catalog supports it."""
+    entry = next(
+        (item for item in price_snapshot.get("models", {}).values() if item.get("id") == model_id),
+        None,
+    )
+    supported = (entry or {}).get("supported_parameters") or []
+    return configured_temperature if "temperature" in supported else None
+
+
 def _decimal(value: Any) -> Optional[Decimal]:
     if value is None:
         return None
@@ -426,7 +439,8 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             # Baseline: one fixed model for this prompt.
             baseline = await call_and_account(
                 baseline_client, prompt_id, "baseline", "baseline_completion",
-                models["baseline"], messages, float(generation_cfg["temperature"]),
+                models["baseline"], messages,
+                temperature_for_model(snapshot, models["baseline"], float(generation_cfg["temperature"])),
                 int(generation_cfg["max_output_tokens"]), run_dir, config, snapshot
             )
             row["baseline"] = baseline["record"]
@@ -447,7 +461,7 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             classifier = await call_and_account(
                 router_client, prompt_id, "modelsync", "classifier",
                 models["classifier"], classifier_messages,
-                float(generation_cfg["classifier_temperature"]),
+                temperature_for_model(snapshot, models["classifier"], float(generation_cfg["classifier_temperature"])),
                 int(generation_cfg["classifier_max_output_tokens"]),
                 run_dir, config, snapshot
             )
@@ -484,7 +498,8 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
 
             downstream = await call_and_account(
                 router_client, prompt_id, "modelsync", "downstream_completion",
-                selected_model, messages, float(generation_cfg["temperature"]),
+                selected_model, messages,
+                temperature_for_model(snapshot, selected_model, float(generation_cfg["temperature"])),
                 int(generation_cfg["max_output_tokens"]), run_dir, config, snapshot
             )
             row["downstream"] = downstream["record"]
