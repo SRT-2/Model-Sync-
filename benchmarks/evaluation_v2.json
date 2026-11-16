@@ -21,7 +21,7 @@
   },
   "models": {
     "classifier": "z-ai/glm-5.3-flash",
-    "coding": "z-ai/glm-5.3-flash",
+    "coding": "deepseek/deepseek-v4.1-flash-1017",
     "unit_testing": "deepseek/deepseek-v4-flash-0731",
     "reasoning": "openai/gpt-5.6-luna",
     "baseline": "anthropic/claude-sonnet-5"
@@ -74,6 +74,11 @@
       "anthropic/claude-sonnet-5": {
         "input": 2,
         "output": 10
+      },
+      "deepseek/deepseek-v4.1-flash-1017": {
+        "input": 0.006,
+        "output": 0.5,
+        "source": "OpenRouter listing checked 2026-11-16; confirm again in catalogue preflight"
       }
     },
     "note": "Reference prices transcribed from screenshots; execution-time catalogue snapshot and generation-level actual cost are the accounting sources for the run."
