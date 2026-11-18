@@ -839,6 +839,13 @@ def markdown_report(run_id: str, summary: Dict[str, Any]) -> str:
         "",
         "Savings is only reportable when all 80 paired prompts complete successfully and all baseline, classifier and downstream generation costs are reconciled.",
         "",
+        "## Phase outcomes",
+        "",
+        *[
+            f"- {name}: {detail}"
+            for name, detail in (summary.get("phase_results") or {}).items()
+        ],
+        "",
         "## Evidence",
         "",
         "See the run directory for raw outputs, generation records, run logs, API results, pricing snapshot, manifest, and checksums.",
@@ -963,6 +970,8 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
         write_json(run_dir / "summary.json", summary)
         (run_dir / "report.md").write_text(markdown_report(run_id, summary), encoding="utf-8")
 
+        LOG.info("Live V2 run outputs complete; finalizing SHA-256 evidence checksums.")
+        file_handler.flush()
         checksums = {}
         for file in sorted(run_dir.rglob("*")):
             if file.is_file() and file.name != "evidence_checksums.json":
@@ -974,7 +983,6 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
             "algorithm": "SHA-256", "files": checksums,
             "note": "Hashes detect changes; they are not a digital signature.",
         })
-        LOG.info("LIVE V2 COMPLETE evidence_dir=%s", run_dir)
         return summary
     except Exception as exc:
         write_json(run_dir / "run_failure.json", {
