@@ -98,6 +98,7 @@ class OpenRouterClient:
             )
 
         return {
+            "request_body": body,
             "response": payload,
             "http_status": response.status_code,
             "latency_ms": round(elapsed_ms, 3),
