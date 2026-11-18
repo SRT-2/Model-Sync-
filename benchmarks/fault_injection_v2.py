@@ -10,6 +10,8 @@ import hashlib
 import json
 import logging
 import os
+import platform
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -225,20 +227,24 @@ def run_suite(output_dir: Path) -> Dict[str, Any]:
     results = []
     try:
         for scenario, mode, expected_status, expected_substring, expected_category in scenarios:
-            results.append(execute_case(
+            result = execute_case(
                 scenario, mode, payload=payload,
                 expected_status=expected_status,
                 expected_substring=expected_substring,
                 expected_category=expected_category,
-            ))
+            )
+            results.append(result)
+            LOG.info("FAULT %s status=%s passed=%s", scenario, result.get("http_status"), result.get("passed"))
 
-        results.append(execute_case(
+        result = execute_case(
             "stream_interrupted_mid_generation",
             "stream_interrupted",
             payload={**payload, "stream": True},
             expected_status=200,
             expected_substring="upstream_error",
-        ))
+        )
+        results.append(result)
+        LOG.info("FAULT %s status=%s passed=%s", result["scenario"], result.get("http_status"), result.get("passed"))
 
         results.append(execute_case(
             "inbound_auth_missing_header",
@@ -293,6 +299,8 @@ def run_suite(output_dir: Path) -> Dict[str, Any]:
         summary = {
             "run_id": run_id,
             "created_at_utc": now(),
+            "runtime": {"python_version": sys.version, "platform": platform.platform()},
+            "secrets_saved": False,
             "suite": "ModelSync V2 controlled local failure injection",
             "test_type": "offline_simulated_faults",
             "total_scenarios": len(results),
