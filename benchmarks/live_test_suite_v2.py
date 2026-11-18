@@ -567,6 +567,7 @@ async def streaming_tests(
         }
         started = time.perf_counter()
         first_event_ms = None
+        first_model_token_ms = None
         events: List[str] = []
         status = None
         error = None
@@ -577,7 +578,20 @@ async def streaming_tests(
                     if line.startswith("data:"):
                         if first_event_ms is None:
                             first_event_ms = round((time.perf_counter()-started)*1000, 3)
-                        events.append(line[5:].strip())
+                        event_text = line[5:].strip()
+                        events.append(event_text)
+                        if event_text and event_text != "[DONE]":
+                            try:
+                                event_payload = json.loads(event_text)
+                                event_model = event_payload.get("model")
+                                delta_content = (
+                                    (event_payload.get("choices") or [{}])[0]
+                                    .get("delta", {}).get("content")
+                                )
+                                if event_model != "smart-router" and delta_content and first_model_token_ms is None:
+                                    first_model_token_ms = round((time.perf_counter()-started)*1000, 3)
+                            except (ValueError, AttributeError, IndexError, TypeError):
+                                pass
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
         elapsed = round((time.perf_counter()-started)*1000, 3)
@@ -608,6 +622,7 @@ async def streaming_tests(
             (chunk.get("usage") for chunk in reversed(parsed) if chunk.get("usage")),
             {},
         )
+        upstream_error = any(bool(chunk.get("error")) for chunk in parsed)
         downstream_record = await router_generation_accounting(
             usage_client, run_dir, item["id"], "downstream_stream",
             downstream_id, stream_usage or {},
@@ -615,17 +630,20 @@ async def streaming_tests(
         record = {
             "category": category, "prompt_id": item["id"],
             "http_status": status, "first_event_latency_ms": first_event_ms,
+            "first_model_token_latency_ms": first_model_token_ms,
             "total_stream_latency_ms": elapsed, "event_count": len(events),
             "done_marker_received": "[DONE]" in events,
             "routed_category": telemetry.get("routed_category"),
             "routed_model": telemetry.get("routed_model"),
             "classifier_generation_id": (telemetry.get("classifier") or {}).get("generation_id"),
             "output_characters": len(output), "error": error,
+            "upstream_error_event_received": upstream_error,
             "classifier_generation_id": classifier_meta.get("generation_id"),
             "classifier_actual_cost_usd": classifier_record.get("actual_cost_usd"),
             "downstream_generation_id": downstream_id,
             "downstream_actual_cost_usd": downstream_record.get("actual_cost_usd"),
-            "passed": status == 200 and "[DONE]" in events and bool(output),
+            "passed": status == 200 and "[DONE]" in events and bool(output)
+                and not upstream_error and first_model_token_ms is not None,
         }
         records.append(record)
         write_json(run_dir / "streaming" / f"{category.lower()}.json", {
@@ -1033,7 +1051,7 @@ def main() -> None:
     parser.add_argument("--api-timeout", type=float, default=180.0)
     parser.add_argument("--max-tokens", type=int, default=500)
     parser.add_argument("--max-cost-usd", type=float, default=5.0)
-    parser.add_argument("--performance-requests", type=int, default=5)
+    parser.add_argument("--performance-requests", type=int, default=10)
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--i-understand-paid-calls", action="store_true")
     args = parser.parse_args()
