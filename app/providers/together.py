@@ -50,7 +50,10 @@ class TogetherProvider(LLMProvider):
                 messages=messages,
                 temperature=0.0,
                 max_tokens=20,
-                extra_body={"usage": {"include": True}} if self.settings.provider_name == "openrouter" else None,
+                extra_body={
+                    "usage": {"include": True},
+                    "provider": {"allow_fallbacks": self.settings.openrouter_allow_fallbacks},
+                } if self.settings.provider_name == "openrouter" else None,
             )
             latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
             response_data = response.model_dump()
@@ -119,7 +122,10 @@ class TogetherProvider(LLMProvider):
     ) -> Dict[str, Any]:
         clean_kwargs = {k: v for k, v in kwargs.items() if v is not None}
         if self.settings.provider_name == "openrouter":
-            clean_kwargs.setdefault("extra_body", {"usage": {"include": True}})
+            clean_kwargs.setdefault("extra_body", {
+                "usage": {"include": True},
+                "provider": {"allow_fallbacks": self.settings.openrouter_allow_fallbacks},
+            })
         try:
             response = await self.client.chat.completions.create(
                 model=model,
@@ -167,7 +173,10 @@ class TogetherProvider(LLMProvider):
     ) -> AsyncIterator[Dict[str, Any]]:
         clean_kwargs = {k: v for k, v in kwargs.items() if v is not None}
         if self.settings.provider_name == "openrouter":
-            clean_kwargs.setdefault("extra_body", {"usage": {"include": True}})
+            clean_kwargs.setdefault("extra_body", {
+                "usage": {"include": True},
+                "provider": {"allow_fallbacks": self.settings.openrouter_allow_fallbacks},
+            })
             clean_kwargs.setdefault("stream_options", {"include_usage": True})
         try:
             stream = await self.client.chat.completions.create(
