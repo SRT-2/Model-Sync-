@@ -76,9 +76,9 @@
         "output": 10
       },
       "deepseek/deepseek-v4.1-flash-1017": {
-        "input": 0.006,
+        "input": 0.036,
         "output": 0.5,
-        "source": "OpenRouter listing checked 2026-11-16; confirm again in catalogue preflight"
+        "source": "OpenRouter model page checked 2026-11-18; preflight catalogue remains the authoritative run snapshot"
       }
     },
     "note": "Reference prices transcribed from screenshots; execution-time catalogue snapshot and generation-level actual cost are the accounting sources for the run."
