@@ -21,6 +21,7 @@ Recommended environment settings:
 OPENROUTER_API_KEY=your_router_key
 OPENROUTER_ROUTER_API_KEY=your_router_key
 OPENROUTER_BASELINE_API_KEY=your_baseline_key
+OPENROUTER_ALLOW_FALLBACKS=false
 ROUTER_API_KEY=optional_inbound_router_auth_token
 
 CLASSIFIER_MODEL=z-ai/glm-5.3-flash
@@ -35,7 +36,7 @@ OPENROUTER_REASONING_MODEL=openai/gpt-5.6-luna
 OPENROUTER_BASELINE_MODEL=anthropic/claude-sonnet-5
 ```
 
-If using separate keys, the `OPENROUTER_ROUTER_API_KEY` must be the same key used by the running ModelSync server. The app now prefers that variable over `OPENROUTER_API_KEY`. The harness uses `OPENROUTER_BASELINE_API_KEY` for baseline requests and `OPENROUTER_ROUTER_API_KEY` for generation-record reconciliation. If using one key, set only `OPENROUTER_API_KEY` and leave the two separate variables blank.
+Provider fallbacks are disabled by default for the controlled comparison. The actual provider name returned for each generation is still recorded. If using separate keys, the `OPENROUTER_ROUTER_API_KEY` must be the same key used by the running ModelSync server. The app now prefers that variable over `OPENROUTER_API_KEY`. The harness uses `OPENROUTER_BASELINE_API_KEY` for baseline requests and `OPENROUTER_ROUTER_API_KEY` for generation-record reconciliation. If using one key, set only `OPENROUTER_API_KEY` and leave the two separate variables blank.
 
 Do not commit `.env` or include API keys in logs, screenshots, or reports.
 
