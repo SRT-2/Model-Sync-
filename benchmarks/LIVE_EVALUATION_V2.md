@@ -140,7 +140,9 @@ Reliability checks include configured inbound authentication, an invalid upstrea
 python -m benchmarks.live_test_suite_v2 --phase reliability --live --i-understand-paid-calls
 ```
 
-The live phases make paid inference calls. The `--max-cost-usd` stop threshold currently applies to the 80-prompt paired-cost phase; it is not a provider-enforced hard cap and can be exceeded by the final in-flight prompt pair. The small connectivity/API/streaming/performance phases are separate runs with their own evidence folders and their costs are not included in the paired savings calculation. Do not use the paid commands until catalogue preflight and offline tests pass.
+The live phases make paid inference calls. The `--max-cost-usd` stop threshold currently applies to the 80-prompt paired-cost phase; it is not a provider-enforced hard cap and can be exceeded by the final in-flight prompt pair. The small connectivity/API/streaming/performance phases are separate runs with their own evidence folders and their costs are not included in the paired savings calculation.
+
+Run `python -m benchmarks.fault_injection_v2` separately for controlled local failure simulations. Its results are labelled offline/simulated and must not be described as real OpenRouter failures. Do not use the paid commands until catalogue preflight and offline tests pass.
 
 ## Evidence folder
 
