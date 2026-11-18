@@ -227,3 +227,36 @@ def test_chat_completions_routes_and_injects_system_prompt(mock_provider, client
     assert response.headers["X-Routed-Category"] == "UNIT_TESTING"
     assert response.headers["X-Routed-Model"] == settings.testing_model
     assert mock_provider.last_model_used == settings.testing_model
+
+def test_chat_completion_can_opt_in_to_router_telemetry(client):
+    payload = {
+        "model": "smart-router",
+        "messages": [{"role": "user", "content": "Write a function"}],
+        "include_router_telemetry": True,
+    }
+    response = client.post("/v1/chat/completions", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["router_telemetry"]["routed_category"] == "CODING"
+    assert data["router_telemetry"]["routed_model"] == data["routed_model"]
+    assert data["router_telemetry"]["classifier"]["category"] == "CODING"
+    assert data["router_telemetry"]["classifier"]["metadata_available"] is False
+
+
+def test_streaming_chat_completion_includes_opt_in_router_telemetry(client):
+    payload = {
+        "model": "smart-router",
+        "messages": [{"role": "user", "content": "Write a function"}],
+        "stream": True,
+        "include_router_telemetry": True,
+    }
+    response = client.post("/v1/chat/completions", json=payload)
+    assert response.status_code == 200
+    first_data = next(
+        line.removeprefix("data: ").strip()
+        for line in response.text.splitlines()
+        if line.startswith("data: {")
+    )
+    first_chunk = json.loads(first_data)
+    assert first_chunk["router_telemetry"]["routed_category"] == "CODING"
+    assert first_chunk["router_telemetry"]["routed_model"]
