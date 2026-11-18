@@ -141,3 +141,34 @@ def test_temperature_is_sent_only_when_supported_by_catalogue() -> None:
     }
     assert temperature_for_model(snapshot, "vendor/model-a", 0.0) == 0.0
     assert temperature_for_model(snapshot, "vendor/model-b", 0.0) is None
+
+def test_write_json_creates_parseable_evidence_file(tmp_path: Path) -> None:
+    from benchmarks.v2_runner import write_json
+
+    target = tmp_path / "nested" / "evidence.json"
+    expected = {"run_id": "test-run", "values": [1, 2, 3]}
+    write_json(target, expected)
+    assert json.loads(target.read_text(encoding="utf-8")) == expected
+    assert not target.with_suffix(".json.tmp").exists()
+
+
+def test_run_manifest_records_hashes_runtime_and_model_ids(tmp_path: Path) -> None:
+    from benchmarks.v2_runner import create_run_manifest
+
+    config_path = tmp_path / "config.json"
+    dataset_path = tmp_path / "dataset.json"
+    config = {"evaluation_version": "2.0", "provider": {"name": "openrouter"},
+              "generation": {"temperature": 0}, "execution": {"response_quality_scoring": False}}
+    dataset = [{"id": "CODING_01", "category": "CODING", "prompt": "write code"}]
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    dataset_path.write_text(json.dumps(dataset), encoding="utf-8")
+    models = {"classifier": "c", "coding": "a", "unit_testing": "b",
+              "reasoning": "d", "baseline": "e"}
+    snapshot = {"captured_at_utc": "2026-11-18T00:00:00Z"}
+    manifest = create_run_manifest("test-run", config_path, dataset_path,
+                                   config, dataset, models, snapshot)
+    assert manifest["inputs"]["config_sha256"]
+    assert manifest["inputs"]["dataset_sha256"]
+    assert manifest["models"] == models
+    assert manifest["runtime"]["python_version"]
+    assert manifest["secrets"]["api_key_values_saved"] is False
