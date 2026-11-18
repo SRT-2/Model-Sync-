@@ -63,6 +63,7 @@ class TogetherProvider(LLMProvider):
             return {
                 "category": parse_label(raw_output),
                 "raw_output": raw_output,
+                "raw_response": response_data,
                 "model": response_data.get("model") or classifier_model,
                 "generation_id": response_data.get("id"),
                 "usage": response_data.get("usage") or {},
