@@ -42,16 +42,16 @@ class Settings(BaseSettings):
 
     # Routing targets
     coding_model: str = Field(
-        default="qwen/qwen3.8-27b:free", alias="CODING_MODEL"
+        default="deepseek/deepseek-v4.1-flash-1017", alias="CODING_MODEL"
     )
     testing_model: str = Field(
-        default="google/gemma-4-26b-a4b-it:free", alias="TESTING_MODEL"
+        default="deepseek/deepseek-v4-flash-0731", alias="TESTING_MODEL"
     )
     reasoning_model: str = Field(
-        default="nvidia/nemotron-3-ultra-550b-a55b:free", alias="REASONING_MODEL"
+        default="openai/gpt-5.6-luna", alias="REASONING_MODEL"
     )
     classifier_model: str = Field(
-        default="poolside/laguna-s-2.1:free", alias="CLASSIFIER_MODEL"
+        default="z-ai/glm-5.3-flash", alias="CLASSIFIER_MODEL"
     )
 
     @property
