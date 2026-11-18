@@ -75,14 +75,45 @@ async def create_chat_completion(
     # 1. Extract prompt to classify
     user_prompt = extract_last_user_content(request.messages)
     
-    # 2. Classify intent
+    # 2. Classify intent. Metadata is exposed only when the evaluation harness
+    # explicitly opts in; ordinary OpenAI-compatible responses remain unchanged.
+    classification_metadata: Dict[str, Any] | None = None
     if user_prompt:
-        category = await state.provider.classify(settings.classifier_model, user_prompt)
+        if request.include_router_telemetry:
+            classification_metadata = await state.provider.classify_with_metadata(
+                settings.classifier_model, user_prompt
+            )
+            category = str(classification_metadata.get("category") or CODING)
+        else:
+            category = await state.provider.classify(settings.classifier_model, user_prompt)
     else:
         category = CODING
+        if request.include_router_telemetry:
+            classification_metadata = {
+                "category": CODING,
+                "raw_output": None,
+                "model": settings.classifier_model,
+                "generation_id": None,
+                "usage": {},
+                "latency_ms": 0.0,
+                "fallback": False,
+                "fallback_reason": None,
+                "metadata_available": True,
+                "skipped": True,
+            }
+
+    router_telemetry = None
+    if request.include_router_telemetry and classification_metadata is not None:
+        router_telemetry = {
+            "classifier": classification_metadata,
+            "routed_category": category,
+            "routed_model": None,
+        }
 
     # 3. Select target model
     target_model = select_target_model(category, settings)
+    if router_telemetry is not None:
+        router_telemetry["routed_model"] = target_model
 
     # 4. Convert messages for upstream
     formatted_messages = [
@@ -116,6 +147,7 @@ async def create_chat_completion(
                 "model": "smart-router",
                 "routed_category": category,
                 "routed_model": target_model,
+                **({"router_telemetry": router_telemetry} if router_telemetry is not None else {}),
                 "choices": [
                     {
                         "index": 0,
@@ -158,6 +190,8 @@ async def create_chat_completion(
     # Attach backward-compatible routing metadata
     result["routed_category"] = category
     result["routed_model"] = target_model
+    if router_telemetry is not None:
+        result["router_telemetry"] = router_telemetry
 
     # Also set response headers
     response.headers["X-Routed-Category"] = category
