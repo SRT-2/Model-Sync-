@@ -33,3 +33,27 @@ class LLMProvider(ABC):
     ) -> str:
         """Classify user prompt into one of the designated categories."""
         pass
+
+
+    async def classify_with_metadata(
+        self,
+        classifier_model: str,
+        prompt: str,
+    ) -> Dict[str, Any]:
+        """Classify with optional provider usage metadata.
+
+        Providers that do not expose upstream metadata remain compatible. A
+        live provider should override this method to return its generation ID,
+        token usage, cost, latency, and fallback state.
+        """
+        category = await self.classify(classifier_model, prompt)
+        return {
+            "category": category,
+            "raw_output": None,
+            "model": classifier_model,
+            "generation_id": None,
+            "usage": {},
+            "latency_ms": None,
+            "fallback": False,
+            "metadata_available": False,
+        }
