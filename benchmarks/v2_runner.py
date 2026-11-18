@@ -10,10 +10,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import hashlib
+import importlib.metadata
 import json
 import logging
 import os
+import platform
 import re
+import subprocess
 import sys
 import time
 import uuid
@@ -45,6 +49,115 @@ MODEL_ENV = {
     "reasoning": "OPENROUTER_REASONING_MODEL",
     "baseline": "OPENROUTER_BASELINE_MODEL",
 }
+
+
+
+def write_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        json.dump(value, handle, indent=2, ensure_ascii=False, default=str)
+        handle.write("\\n")
+    temporary.replace(path)
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def git_provenance() -> Dict[str, Optional[str]]:
+    def git_value(*args: str) -> Optional[str]:
+        try:
+            result = subprocess.run(
+                ["git", *args], cwd=PROJECT_ROOT, check=False,
+                capture_output=True, text=True, timeout=5,
+            )
+            return result.stdout.strip() if result.returncode == 0 else None
+        except (OSError, subprocess.SubprocessError):
+            return None
+    return {
+        "commit": git_value("rev-parse", "HEAD"),
+        "branch": git_value("rev-parse", "--abbrev-ref", "HEAD"),
+        "working_tree_status": git_value("status", "--short"),
+    }
+
+
+def setup_run_logging(run_dir: Path) -> Path:
+    log_path = run_dir / "run.log"
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    for handler in root_logger.handlers:
+        if getattr(handler, "_evaluation_v2_file", False):
+            root_logger.removeHandler(handler)
+            handler.close()
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s %(message)s"
+    ))
+    file_handler._evaluation_v2_file = True  # type: ignore[attr-defined]
+    root_logger.addHandler(file_handler)
+    return log_path
+
+
+def package_versions() -> Dict[str, Optional[str]]:
+    versions: Dict[str, Optional[str]] = {}
+    for package in ("httpx", "openai", "pydantic", "pydantic-settings", "pytest"):
+        try:
+            versions[package] = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            versions[package] = None
+    return versions
+
+
+def create_run_manifest(
+    run_id: str,
+    config_path: Path,
+    dataset_path: Path,
+    config: Dict[str, Any],
+    dataset: List[Dict[str, Any]],
+    models: Dict[str, str],
+    price_snapshot: Dict[str, Any],
+) -> Dict[str, Any]:
+    category_counts = {
+        category: sum(1 for item in dataset if item["category"] == category)
+        for category in CATEGORIES
+    }
+    manifest = {
+        "run_id": run_id,
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "evaluation_version": config.get("evaluation_version"),
+        "provider": config.get("provider", {}).get("name"),
+        "source_provenance": git_provenance(),
+        "runtime": {
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "package_versions": package_versions(),
+        },
+        "inputs": {
+            "config_path": str(config_path),
+            "config_sha256": sha256_file(config_path),
+            "dataset_path": str(dataset_path),
+            "dataset_sha256": sha256_file(dataset_path),
+            "dataset_count": len(dataset),
+            "category_counts": category_counts,
+            "prompt_ids": [item["id"] for item in dataset],
+        },
+        "models": models,
+        "pricing_snapshot_timestamp_utc": price_snapshot.get("captured_at_utc"),
+        "generation_settings": config.get("generation", {}),
+        "execution_settings": config.get("execution", {}),
+        "secrets": {
+            "api_key_values_saved": False,
+            "baseline_key_variable": config.get("secrets", {}).get("baseline_api_key_env"),
+            "router_key_variable": config.get("secrets", {}).get("router_api_key_env"),
+        },
+    }
+    return manifest
 
 
 def load_json(path: Path) -> Dict[str, Any]:
@@ -325,12 +438,58 @@ async def call_and_account(
         raw_dir.mkdir(parents=True, exist_ok=True)
         if generation_id:
             raw_path = raw_dir / f"{generation_id}.json"
-            with raw_path.open("w", encoding="utf-8") as handle:
-                json.dump(result.get("generation_record") or {}, handle, indent=2)
+            write_json(raw_path, result.get("generation_record") or {})
+        safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{prompt_id}_{experiment}_{call_role}")
+        completion_path = run_dir / "raw_completions" / f"{safe_stem}.json"
+        write_json(completion_path, {
+            "run_id": run_dir.name,
+            "prompt_id": prompt_id,
+            "experiment": experiment,
+            "call_role": call_role,
+            "requested_model": model_id,
+            "request": {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": False,
+                "usage": {"include": True},
+            },
+            "http_status": result.get("http_status"),
+            "latency_ms": result.get("latency_ms"),
+            "generation_id": generation_id,
+            "response_body": result.get("response"),
+            "generation_record": result.get("generation_record"),
+            "reconciliation_status": result.get("reconciliation_status"),
+        })
+        record["raw_completion_file"] = str(completion_path.relative_to(run_dir))
+        LOGGER.info(
+            "CALL success prompt=%s role=%s requested_model=%s actual_model=%s generation_id=%s latency_ms=%s actual_cost_usd=%s reconciliation=%s",
+            prompt_id, call_role, model_id, actual_model, generation_id,
+            result.get("latency_ms"), actual_cost, reconciliation.get("status")
+        )
         return {"record": record, "result": result}
     except Exception as exc:
         status_code = exc.status_code if isinstance(exc, OpenRouterRequestError) else None
         payload = exc.payload if isinstance(exc, OpenRouterRequestError) else {}
+        safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{prompt_id}_{experiment}_{call_role}")
+        error_path = run_dir / "raw_errors" / f"{safe_stem}.json"
+        error_evidence = {
+            "run_id": run_dir.name,
+            "prompt_id": prompt_id,
+            "experiment": experiment,
+            "call_role": call_role,
+            "requested_model": model_id,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "http_status": status_code,
+            "error_payload": payload,
+            "request_messages": messages,
+        }
+        write_json(error_path, error_evidence)
+        LOGGER.error(
+            "CALL failed prompt=%s role=%s requested_model=%s status=%s error=%s",
+            prompt_id, call_role, model_id, status_code, str(exc)
+        )
         return {
             "record": {
                 "run_id": run_dir.name,
@@ -351,6 +510,8 @@ async def call_and_account(
                 "actual_cost_source": None,
                 "catalog_estimated_cost_usd": None,
                 "reconciliation_status": "not_available",
+                "raw_error_file": str(error_path.relative_to(run_dir)),
+                "error_type": type(exc).__name__,
                 "error": str(exc),
                 "error_payload": payload,
             },
@@ -396,11 +557,26 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
     )
 
     try:
+        log_path = setup_run_logging(run_dir)
+        LOGGER.info("Evaluation V2 run started: %s", run_id)
+        LOGGER.info("Repository provenance: %s", git_provenance())
+        LOGGER.info("Dataset path: %s | prompts: %d", dataset_path, len(dataset))
+        LOGGER.info("Configured models: %s", models)
+
+        inputs_dir = run_dir / "inputs"
+        inputs_dir.mkdir(parents=True, exist_ok=True)
+        write_json(inputs_dir / "evaluation_v2.json", config)
+        write_json(inputs_dir / "dataset_v2_80.json", dataset)
+
         catalog = await router_client.fetch_models()
         snapshot = make_price_snapshot(catalog, models)
-        (run_dir / "pricing_snapshot.json").write_text(
-            json.dumps(snapshot, indent=2), encoding="utf-8"
+        write_json(run_dir / "pricing_snapshot.json", snapshot)
+        manifest = create_run_manifest(
+            run_id, config_path, dataset_path, config, dataset, models, snapshot
         )
+        write_json(run_dir / "run_manifest.json", manifest)
+        LOGGER.info("Pricing snapshot captured: %s", snapshot.get("captured_at_utc"))
+        LOGGER.info("Run evidence directory: %s", run_dir)
 
         generation_cfg = config["generation"]
         max_cost = float(args.max_cost_usd if args.max_cost_usd is not None
@@ -595,12 +771,21 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             },
         }
 
-        (run_dir / "prompt_results.json").write_text(
-            json.dumps(prompt_records, indent=2, default=str), encoding="utf-8"
-        )
-        (run_dir / "summary.json").write_text(
-            json.dumps(summary, indent=2, default=str), encoding="utf-8"
-        )
+        summary["evidence"] = {
+            "run_log": "run.log",
+            "run_manifest": "run_manifest.json",
+            "config_copy": "inputs/evaluation_v2.json",
+            "dataset_copy": "inputs/dataset_v2_80.json",
+            "pricing_snapshot": "pricing_snapshot.json",
+            "prompt_results_json": "prompt_results.json",
+            "prompt_results_csv": "prompt_results.csv",
+            "generation_records": "generation_records.jsonl",
+            "raw_completions_directory": "raw_completions/",
+            "raw_generation_records_directory": "raw_generation_records/",
+            "raw_errors_directory": "raw_errors/",
+        }
+        write_json(run_dir / "prompt_results.json", prompt_records)
+        write_json(run_dir / "summary.json", summary)
         csv_path = run_dir / "prompt_results.csv"
         fields = [
             "prompt_id", "expected_category", "difficulty", "classifier_prediction",
@@ -660,6 +845,11 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
                     "downstream_reconciliation": downstream.get("reconciliation_status"),
                 })
         LOGGER.info("Evaluation V2 artifacts saved to %s", run_dir)
+        LOGGER.info("Execution summary: prompts=%d successful_calls=%d failed_calls=%d reconciled=%d savings=%s",
+                    len(prompt_records), summary["execution"]["successful_calls"],
+                    summary["execution"]["failed_calls"],
+                    summary["execution"]["generation_records_reconciled"],
+                    savings)
         return summary
     finally:
         await baseline_client.close()
