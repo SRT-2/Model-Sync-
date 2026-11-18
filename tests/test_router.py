@@ -314,3 +314,10 @@ def test_dedicated_openrouter_router_key_selects_openrouter_base_url():
         together_api_key="together-key",
     )
     assert settings.effective_base_url == "https://openrouter.ai/api/v1"
+
+def test_openrouter_credentials_override_stale_generic_upstream_url():
+    settings = Settings(
+        openrouter_router_api_key="router-key",
+        upstream_base_url="https://legacy-provider.example/v1",
+    )
+    assert settings.effective_base_url == "https://openrouter.ai/api/v1"
