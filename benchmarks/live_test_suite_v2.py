@@ -355,6 +355,7 @@ async def paired_cost_comparison(
             "baseline_generation_id": baseline.get("generation_id"),
             "baseline_usage": baseline.get("usage") or {},
             "baseline_cost_usd": baseline_cost,
+            "baseline_reconciliation_status": baseline.get("reconciliation_status"),
             "baseline_latency_ms": baseline.get("latency_ms"),
             "downstream_model": downstream_record.get("actual_model") or body.get("model"),
             "downstream_generation_id": downstream_id,
@@ -396,7 +397,7 @@ async def paired_cost_comparison(
         and all(value is not None for value in baseline_costs)
         and all(value is not None for value in router_costs)
         and all(row.get("status") == "success" for row in rows)
-        and all(row.get("baseline", {}).get("reconciliation_status") == "reconciled" for row in rows)
+        and all(row.get("baseline_reconciliation_status") == "reconciled" for row in rows)
         and all(row.get("classifier_reconciliation") == "reconciled" for row in rows)
         and all(row.get("downstream_reconciliation") == "reconciled" for row in rows)
     )
@@ -442,6 +443,7 @@ async def paired_cost_comparison(
             "baseline_prompt_tokens": (row.get("baseline_usage") or {}).get("prompt_tokens"),
             "baseline_completion_tokens": (row.get("baseline_usage") or {}).get("completion_tokens"),
             "baseline_cost_usd": row.get("baseline_cost_usd"),
+            "baseline_reconciliation_status": row.get("baseline_reconciliation_status"),
             "classifier_model": row.get("classifier_model"),
             "classifier_generation_id": row.get("classifier_generation_id"),
             "classifier_prompt_tokens": (row.get("classifier_usage") or {}).get("prompt_tokens"),
