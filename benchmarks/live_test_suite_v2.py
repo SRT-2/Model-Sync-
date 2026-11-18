@@ -623,7 +623,16 @@ async def performance_tests(
     summaries = []
     for concurrency in (1, 5, 10):
         semaphore = asyncio.Semaphore(concurrency)
-        chosen = [dataset[i % len(dataset)] for i in range(requests_per_level)]
+        by_category = {
+            category: [item for item in dataset if item["category"] == category]
+            for category in CATEGORIES
+        }
+        chosen = [
+            by_category[CATEGORIES[i % len(CATEGORIES)]][
+                (i // len(CATEGORIES)) % len(by_category[CATEGORIES[i % len(CATEGORIES)]])
+            ]
+            for i in range(requests_per_level)
+        ]
 
         async def one(index: int, item: Dict[str, Any]) -> Dict[str, Any]:
             async with semaphore:
@@ -768,9 +777,21 @@ async def connectivity_tests(
                 model, [{"role": "user", "content": "Reply with READY."}],
                 temperature=None, max_tokens=8,
             )
-            accounting = await reconcile(
-                client, run_dir, call.get("generation_id"),
-                f"CONNECT_{role}", role, call.get("usage"),
+            accounting = await router_generation_accounting(
+                client, run_dir, f"CONNECT_{role}", role,
+                call.get("generation_id"), call.get("usage") or {},
+            )
+            write_json(
+                run_dir / "raw_completions" / f"connectivity_{stem(role)}.json",
+                {
+                    "request": {
+                        "model": model,
+                        "messages": [{"role": "user", "content": "Reply with READY."}],
+                        "temperature": None, "max_tokens": 8,
+                    },
+                    "response": call.get("response"),
+                    "generation_record": accounting.get("raw_generation_record"),
+                },
             )
             results.append({
                 "role": role, "requested_model": model,
