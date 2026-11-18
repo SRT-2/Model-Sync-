@@ -57,7 +57,7 @@ def write_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     with temporary.open("w", encoding="utf-8") as handle:
         json.dump(value, handle, indent=2, ensure_ascii=False, default=str)
-        handle.write("\\n")
+        handle.write("\n")
     temporary.replace(path)
 
 
