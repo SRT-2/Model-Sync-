@@ -66,6 +66,7 @@ class TogetherProvider(LLMProvider):
             return {
                 "category": parse_label(raw_output),
                 "raw_output": raw_output,
+                "request_messages": messages,
                 "raw_response": response_data,
                 "model": response_data.get("model") or classifier_model,
                 "generation_id": response_data.get("id"),
@@ -86,6 +87,7 @@ class TogetherProvider(LLMProvider):
             return {
                 "category": CODING,
                 "raw_output": None,
+                "request_messages": messages,
                 "model": classifier_model,
                 "generation_id": None,
                 "usage": {},
