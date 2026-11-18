@@ -209,6 +209,48 @@ async def router_generation_accounting(
     return record
 
 
+async def account_api_body(
+    client: OpenRouterClient, run_dir: Path, prompt_id: str,
+    body: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Reconcile classifier and downstream generations returned by a live API call."""
+    telemetry = body.get("router_telemetry") or {}
+    classifier = telemetry.get("classifier") or {}
+    classifier_record = await router_generation_accounting(
+        client, run_dir, prompt_id, "classifier",
+        classifier.get("generation_id"), classifier.get("usage") or {},
+    ) if classifier else {
+        "status": "missing_telemetry", "generation_id": None,
+        "actual_cost_usd": None, "reconciliation_status": "not_available",
+    }
+    if classifier:
+        write_json(
+            run_dir / "raw_completions" / f"{stem(prompt_id)}_classifier.json",
+            {
+                "prompt_id": prompt_id,
+                "classifier_telemetry": classifier,
+                "generation_record": classifier_record.get("raw_generation_record"),
+                "reconciliation_status": classifier_record.get("reconciliation_status"),
+            },
+        )
+    downstream_record = await router_generation_accounting(
+        client, run_dir, prompt_id, "downstream_completion",
+        body.get("id"), body.get("usage") or {},
+    ) if body.get("id") else {
+        "status": "missing_generation_id", "generation_id": None,
+        "actual_cost_usd": None, "reconciliation_status": "not_available",
+    }
+    return {
+        "classifier": classifier_record,
+        "downstream": downstream_record,
+        "modelsync_total_actual_cost_usd": (
+            float(classifier_record["actual_cost_usd"]) + float(downstream_record["actual_cost_usd"])
+            if classifier_record.get("actual_cost_usd") is not None
+            and downstream_record.get("actual_cost_usd") is not None else None
+        ),
+    }
+
+
 async def paired_cost_comparison(
     dataset: List[Dict[str, Any]], baseline_client: OpenRouterClient,
     router_client: OpenRouterClient, router_http: httpx.AsyncClient,
