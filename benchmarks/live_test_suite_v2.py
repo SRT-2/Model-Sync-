@@ -460,8 +460,8 @@ async def paired_cost_comparison(
 
 
 async def api_tests(
-    http: httpx.AsyncClient, run_dir: Path, dataset: List[Dict[str, Any]],
-    auth_enabled: bool,
+    http: httpx.AsyncClient, usage_client: OpenRouterClient,
+    run_dir: Path, dataset: List[Dict[str, Any]], auth_enabled: bool,
 ) -> List[Dict[str, Any]]:
     tests: List[Dict[str, Any]] = []
 
@@ -477,6 +477,11 @@ async def api_tests(
             except ValueError:
                 body = {"raw_text": response.text}
             passed = response.status_code in expected
+            generation_accounting = None
+            if response.is_success and isinstance(body, dict) and body.get("router_telemetry"):
+                generation_accounting = await account_api_body(
+                    usage_client, run_dir, f"API_{stem(name)}", body
+                )
             observed_category = body.get("routed_category") if isinstance(body, dict) else None
             if expected_routed_category is not None:
                 passed = passed and observed_category == expected_routed_category
@@ -487,6 +492,7 @@ async def api_tests(
                 "expected_routed_category": expected_routed_category,
                 "observed_routed_category": observed_category,
                 "passed": passed, "response": body,
+                "generation_accounting": generation_accounting,
             }
         except Exception as exc:
             record = {
@@ -527,7 +533,8 @@ async def api_tests(
 
 
 async def streaming_tests(
-    http: httpx.AsyncClient, run_dir: Path, dataset: List[Dict[str, Any]],
+    http: httpx.AsyncClient, usage_client: OpenRouterClient,
+    run_dir: Path, dataset: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     records = []
     for category in CATEGORIES:
@@ -566,6 +573,24 @@ async def streaming_tests(
             (chunk.get("choices") or [{}])[0].get("delta", {}).get("content") or ""
             for chunk in parsed
         )
+        classifier_meta = (telemetry.get("classifier") or {})
+        classifier_record = await router_generation_accounting(
+            usage_client, run_dir, item["id"], "classifier_stream",
+            classifier_meta.get("generation_id"), classifier_meta.get("usage") or {},
+        ) if classifier_meta else {"status": "missing_telemetry", "actual_cost_usd": None}
+        upstream_chunks = [
+            chunk for chunk in parsed
+            if chunk.get("model") != "smart-router" and chunk.get("id")
+        ]
+        downstream_id = upstream_chunks[0].get("id") if upstream_chunks else None
+        stream_usage = next(
+            (chunk.get("usage") for chunk in reversed(parsed) if chunk.get("usage")),
+            {},
+        )
+        downstream_record = await router_generation_accounting(
+            usage_client, run_dir, item["id"], "downstream_stream",
+            downstream_id, stream_usage or {},
+        ) if downstream_id else {"status": "missing_generation_id", "actual_cost_usd": None}
         record = {
             "category": category, "prompt_id": item["id"],
             "http_status": status, "first_event_latency_ms": first_event_ms,
@@ -575,6 +600,10 @@ async def streaming_tests(
             "routed_model": telemetry.get("routed_model"),
             "classifier_generation_id": (telemetry.get("classifier") or {}).get("generation_id"),
             "output_characters": len(output), "error": error,
+            "classifier_generation_id": classifier_meta.get("generation_id"),
+            "classifier_actual_cost_usd": classifier_record.get("actual_cost_usd"),
+            "downstream_generation_id": downstream_id,
+            "downstream_actual_cost_usd": downstream_record.get("actual_cost_usd"),
             "passed": status == 200 and "[DONE]" in events and bool(output),
         }
         records.append(record)
@@ -588,8 +617,8 @@ async def streaming_tests(
 
 
 async def performance_tests(
-    http: httpx.AsyncClient, run_dir: Path, dataset: List[Dict[str, Any]],
-    requests_per_level: int,
+    http: httpx.AsyncClient, usage_client: OpenRouterClient,
+    run_dir: Path, dataset: List[Dict[str, Any]], requests_per_level: int,
 ) -> List[Dict[str, Any]]:
     summaries = []
     for concurrency in (1, 5, 10):
@@ -607,11 +636,19 @@ async def performance_tests(
                         "max_tokens": 80, "include_router_telemetry": True,
                     },
                 )
+                accounting = await account_api_body(
+                    usage_client, run_dir, f"PERF_C{concurrency}_{index:03d}",
+                    response.get("body") or {},
+                ) if response.get("ok") else None
                 return {
                     "request_index": index, "prompt_id": item["id"],
                     "category": item["category"], "success": response["ok"],
                     "http_status": response["http_status"],
                     "latency_ms": round((time.perf_counter()-started)*1000, 3),
+                    "modelsync_actual_cost_usd": (
+                        accounting.get("modelsync_total_actual_cost_usd") if accounting else None
+                    ),
+                    "generation_accounting": accounting,
                     "error": response["error"],
                 }
 
@@ -865,17 +902,21 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
         if "api" in selected:
             health_response = await router_http.get("/health")
             health = health_response.json() if health_response.is_success else {}
-            phases["api"] = await api_tests(router_http, run_dir, dataset, bool(health.get("auth_enabled")))
+            phases["api"] = await api_tests(
+                router_http, router_client, run_dir, dataset, bool(health.get("auth_enabled"))
+            )
         if "paired-cost" in selected:
             phases["paired_cost_comparison"] = await paired_cost_comparison(
                 dataset, baseline_client, router_client, router_http, run_dir,
                 models, args.max_tokens, args.max_cost_usd,
             )
         if "streaming" in selected:
-            phases["streaming"] = await streaming_tests(router_http, run_dir, dataset)
+            phases["streaming"] = await streaming_tests(
+                router_http, router_client, run_dir, dataset
+            )
         if "performance" in selected:
             phases["performance"] = await performance_tests(
-                router_http, run_dir, dataset, args.performance_requests
+                router_http, router_client, run_dir, dataset, args.performance_requests
             )
         if "reliability" in selected:
             phases["reliability"] = await reliability_tests(router_http, router_client, run_dir)
