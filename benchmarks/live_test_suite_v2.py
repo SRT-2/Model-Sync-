@@ -425,7 +425,8 @@ async def api_tests(
 
     async def run(name: str, method: str, path: str, expected: List[int],
                   payload: Optional[Dict[str, Any]] = None,
-                  headers: Optional[Dict[str, str]] = None) -> None:
+                  headers: Optional[Dict[str, str]] = None,
+                  expected_routed_category: Optional[str] = None) -> None:
         started = time.perf_counter()
         try:
             response = await http.request(method, path, json=payload, headers=headers)
@@ -434,10 +435,15 @@ async def api_tests(
             except ValueError:
                 body = {"raw_text": response.text}
             passed = response.status_code in expected
+            observed_category = body.get("routed_category") if isinstance(body, dict) else None
+            if expected_routed_category is not None:
+                passed = passed and observed_category == expected_routed_category
             record = {
                 "test_name": name, "method": method, "path": path,
                 "http_status": response.status_code, "expected_status": expected,
                 "latency_ms": round((time.perf_counter()-started)*1000, 3),
+                "expected_routed_category": expected_routed_category,
+                "observed_routed_category": observed_category,
                 "passed": passed, "response": body,
             }
         except Exception as exc:
@@ -466,6 +472,7 @@ async def api_tests(
                 "messages": [{"role": "user", "content": item["prompt"]}],
                 "max_tokens": 100, "include_router_telemetry": True,
             },
+            expected_routed_category=category,
         )
     await run("missing messages validation", "POST", "/v1/chat/completions", [422],
               payload={"model": "smart-router"})
@@ -808,8 +815,8 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
         LOG.info("LIVE V2 START run=%s git=%s", run_id, manifest["source_provenance"].get("commit"))
 
         selected = set(args.phase)
-        if "all" in selected:
-            selected = {"connectivity", "api", "paired-cost", "streaming", "performance", "reliability"}
+        if "preflight" in selected and len(selected) > 1:
+            raise ValueError("Run --phase preflight on its own; it does not execute live checks.")
 
         if "connectivity" in selected:
             phases["connectivity"] = await connectivity_tests(router_client, run_dir, models)
@@ -887,8 +894,8 @@ def main() -> None:
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument(
         "--phase", nargs="+",
-        choices=["preflight", "connectivity", "api", "paired-cost", "streaming", "performance", "reliability", "all"],
-        default=["all"],
+        choices=["preflight", "connectivity", "api", "paired-cost", "streaming", "performance", "reliability"],
+        default=["preflight"],
     )
     parser.add_argument("--api-timeout", type=float, default=180.0)
     parser.add_argument("--max-tokens", type=int, default=500)
