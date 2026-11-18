@@ -114,10 +114,9 @@ class FaultInjectionProvider(LLMProvider):
 
 
 def configure(mode: str, router_api_key: str | None = None) -> FaultInjectionProvider:
-    if router_api_key:
-        os.environ["ROUTER_API_KEY"] = router_api_key
-    else:
-        os.environ.pop("ROUTER_API_KEY", None)
+    # Empty string overrides any ROUTER_API_KEY value from a local .env file
+    # for scenarios that intentionally test unauthenticated access.
+    os.environ["ROUTER_API_KEY"] = router_api_key or ""
     get_settings.cache_clear()
     state = get_state()
     state.reload()
@@ -138,6 +137,7 @@ def execute_case(
     auth_key: str | None = None,
     headers: Dict[str, str] | None = None,
 ) -> Dict[str, Any]:
+    original_router_key = os.environ.get("ROUTER_API_KEY")
     provider = configure(mode, auth_key)
     from app.main import create_app
 
@@ -188,7 +188,10 @@ def execute_case(
             "error": str(exc),
         }
     finally:
-        os.environ.pop("ROUTER_API_KEY", None)
+        if original_router_key is None:
+            os.environ.pop("ROUTER_API_KEY", None)
+        else:
+            os.environ["ROUTER_API_KEY"] = original_router_key
         get_settings.cache_clear()
         state = get_state()
         state.reload()
@@ -261,11 +264,20 @@ def run_suite(output_dir: Path) -> Dict[str, Any]:
             headers={"Authorization": "Bearer invalid-token"},
         ))
 
-        provider = configure("normal")
-        from app.main import create_app
-        with TestClient(create_app()) as client:
-            client.post("/v1/chat/completions", json=payload)
-            client.post("/v1/chat/completions", json=payload)
+        original_router_key = os.environ.get("ROUTER_API_KEY")
+        try:
+            provider = configure("normal")
+            from app.main import create_app
+            with TestClient(create_app()) as client:
+                client.post("/v1/chat/completions", json=payload)
+                client.post("/v1/chat/completions", json=payload)
+        finally:
+            if original_router_key is None:
+                os.environ.pop("ROUTER_API_KEY", None)
+            else:
+                os.environ["ROUTER_API_KEY"] = original_router_key
+            get_settings.cache_clear()
+            get_state().reload()
         results.append({
             "scenario": "identical_prompt_cache_observation",
             "test_type": "controlled_local_observation",
