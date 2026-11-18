@@ -20,6 +20,8 @@ class Settings(BaseSettings):
 
     # Upstream keys
     openrouter_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_API_KEY")
+    # Dedicated upstream key used by the live ModelSync evaluation harness/server.
+    openrouter_router_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_ROUTER_API_KEY")
     together_api_key: Optional[str] = Field(default=None, alias="TOGETHER_API_KEY")
     upstream_api_key: Optional[str] = Field(default=None, alias="UPSTREAM_API_KEY")
 
@@ -54,6 +56,8 @@ class Settings(BaseSettings):
 
     @property
     def effective_api_key(self) -> Optional[str]:
+        if self.openrouter_router_api_key:
+            return self.openrouter_router_api_key
         if self.openrouter_api_key:
             return self.openrouter_api_key
         if self.together_api_key:
@@ -72,7 +76,7 @@ class Settings(BaseSettings):
 
     @property
     def provider_name(self) -> str:
-        if self.openrouter_api_key:
+        if self.openrouter_router_api_key or self.openrouter_api_key:
             return "openrouter"
         if self.together_api_key:
             return "together"
