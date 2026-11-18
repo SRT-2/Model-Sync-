@@ -263,6 +263,21 @@ async def paired_cost_comparison(
             "status": "failed", "generation_id": None,
             "actual_cost_usd": None, "usage": {},
         }
+        if classifier:
+            classifier_generation = await reconcile(
+                router_client, run_dir, classifier.get("generation_id"),
+                prompt_id, "classifier", classifier.get("usage") or {},
+            )
+            write_json(
+                run_dir / "raw_completions" / f"{stem(prompt_id)}_classifier.json",
+                {
+                    "prompt_id": prompt_id,
+                    "classifier_telemetry": classifier,
+                    "generation_record": classifier_generation.get("generation_record"),
+                    "reconciliation_status": classifier_generation.get("reconciliation_status"),
+                },
+            )
+
         classifier_cost = classifier_record.get("actual_cost_usd")
         downstream_cost = downstream_record.get("actual_cost_usd")
         router_total = (
@@ -291,6 +306,11 @@ async def paired_cost_comparison(
             "model_selection_correct": (
                 body.get("routed_category") == item["category"]
                 and classifier.get("fallback") is False
+                and (body.get("routed_model") or telemetry.get("routed_model")) == {
+                    "CODING": models["coding"],
+                    "UNIT_TESTING": models["unit_testing"],
+                    "REASONING": models["reasoning"],
+                }.get(item["category"])
             ),
             "baseline_model": baseline.get("actual_model"),
             "baseline_generation_id": baseline.get("generation_id"),
@@ -337,6 +357,9 @@ async def paired_cost_comparison(
         and all(value is not None for value in baseline_costs)
         and all(value is not None for value in router_costs)
         and all(row.get("status") == "success" for row in rows)
+        and all(row.get("baseline", {}).get("reconciliation_status") == "reconciled" for row in rows)
+        and all(row.get("classifier_reconciliation") == "reconciled" for row in rows)
+        and all(row.get("downstream_reconciliation") == "reconciled" for row in rows)
     )
     baseline_total = sum(float(x) for x in baseline_costs if x is not None)
     router_total = sum(float(x) for x in router_costs if x is not None)
