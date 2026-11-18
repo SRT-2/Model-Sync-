@@ -103,7 +103,7 @@ Live FastAPI endpoint checks, one real request per routing category plus health,
 python -m benchmarks.live_test_suite_v2 --phase api --live --i-understand-paid-calls
 ```
 
-**Primary paired cost experiment:** 80 baseline calls + 80 classifier calls + 80 downstream calls. The default run budget guard is USD 5 and applies to the paired experiment:
+**Primary paired cost experiment:** 80 baseline calls + 80 classifier calls + 80 downstream calls. The default run budget stop threshold is USD 5 and applies to the paired experiment. The runner checks after a complete prompt pair, so a final in-flight pair can take the actual spend slightly above the threshold:
 
 ```powershell
 python -m benchmarks.live_test_suite_v2 --phase paired-cost --live --i-understand-paid-calls --max-cost-usd 5.00
@@ -115,7 +115,7 @@ Live streaming tests (one prompt per category):
 python -m benchmarks.live_test_suite_v2 --phase streaming --live --i-understand-paid-calls
 ```
 
-Live performance tests at concurrency 1, 5 and 10. Default: five requests at each concurrency level (15 total). Change the count explicitly with `--performance-requests N`:
+Live performance tests at concurrency 1, 5 and 10. Default: ten requests at each concurrency level (30 total), so the concurrency-10 scenario actually has ten simultaneous requests. Change the count explicitly with `--performance-requests N`:
 
 ```powershell
 python -m benchmarks.live_test_suite_v2 --phase performance --live --i-understand-paid-calls --performance-requests 5
@@ -127,7 +127,7 @@ Reliability checks include configured inbound authentication, an invalid upstrea
 python -m benchmarks.live_test_suite_v2 --phase reliability --live --i-understand-paid-calls
 ```
 
-The live phases make paid inference calls. The `--max-cost-usd` guard currently applies to the 80-prompt paired-cost phase; the small connectivity/API/streaming/performance phases are separate runs with their own evidence folders and must be reviewed separately. Do not use the paid commands until catalogue preflight and offline tests pass.
+The live phases make paid inference calls. The `--max-cost-usd` stop threshold currently applies to the 80-prompt paired-cost phase; it is not a provider-enforced hard cap and can be exceeded by the final in-flight prompt pair. The small connectivity/API/streaming/performance phases are separate runs with their own evidence folders and their costs are not included in the paired savings calculation. Do not use the paid commands until catalogue preflight and offline tests pass.
 
 ## Evidence folder
 
