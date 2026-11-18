@@ -49,3 +49,10 @@ def test_markdown_report_labels_savings_only_from_paired_summary() -> None:
     assert '0.11' in report
     assert '78.0' in report
     assert 'all 80 paired prompts' in report
+
+def test_fault_injection_module_imports_without_network_calls() -> None:
+    from benchmarks.fault_injection_v2 import FaultInjectionProvider
+
+    provider = FaultInjectionProvider("upstream_timeout")
+    assert provider.mode == "upstream_timeout"
+    assert provider.classification_calls == 0
