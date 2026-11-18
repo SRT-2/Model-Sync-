@@ -154,6 +154,7 @@ Each phase writes a unique directory under `testing-results/live_evaluation_v2/`
 ├── run_manifest.json
 ├── inputs/
 ├── pricing_snapshot.json
+├── router_server_preflight.json       # live API phases only
 ├── raw_completions/
 ├── raw_generation_records/
 ├── raw_errors/
