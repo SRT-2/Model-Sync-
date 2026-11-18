@@ -29,6 +29,8 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = None
     max_tokens: Optional[int] = None
     stop: Optional[Union[str, List[str]]] = None
+    # Opt-in diagnostic field for the Evaluation V2 test harness.
+    include_router_telemetry: bool = False
     frequency_penalty: Optional[float] = None
     presence_penalty: Optional[float] = None
 
