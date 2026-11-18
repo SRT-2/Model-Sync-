@@ -269,13 +269,24 @@ async def paired_cost_comparison(
             baseline_client, run_dir, prompt_id, models["baseline"], messages, max_tokens
         )
         baseline_cost = baseline.get("actual_cost_usd")
-        if baseline_cost is not None:
-            spend_guard += float(baseline_cost)
+        if (
+            baseline_cost is None
+            or baseline.get("reconciliation_status") != "reconciled"
+        ):
+            rows.append({
+                "prompt_id": prompt_id, "category": item["category"],
+                "baseline": baseline, "status": "baseline_cost_unreconciled",
+            })
+            write_json(run_dir / "paired_cost_in_progress.json", rows)
+            stop_reason = "baseline_cost_unavailable_or_unreconciled"
+            break
+        spend_guard += float(baseline_cost)
         if spend_guard >= max_cost:
             rows.append({
                 "prompt_id": prompt_id, "category": item["category"],
                 "baseline": baseline, "status": "stopped_after_baseline_budget",
             })
+            write_json(run_dir / "paired_cost_in_progress.json", rows)
             stop_reason = "max_cost_budget_reached"
             break
 
@@ -375,6 +386,14 @@ async def paired_cost_comparison(
         rows.append(row)
         write_json(run_dir / "paired_cost_in_progress.json", rows)
 
+        if (
+            classifier_record.get("reconciliation_status") != "reconciled"
+            or downstream_record.get("reconciliation_status") != "reconciled"
+            or classifier_cost is None
+            or downstream_cost is None
+        ):
+            stop_reason = "modelsync_generation_cost_unavailable_or_unreconciled"
+            break
         if spend_guard >= max_cost:
             stop_reason = "max_cost_budget_reached"
             break
