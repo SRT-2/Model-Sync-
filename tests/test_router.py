@@ -307,3 +307,10 @@ def test_openrouter_classifier_metadata_captures_generation_usage_and_raw_output
         "usage": {"include": True},
         "provider": {"allow_fallbacks": False},
     }
+
+def test_dedicated_openrouter_router_key_selects_openrouter_base_url():
+    settings = Settings(
+        openrouter_router_api_key="router-key",
+        together_api_key="together-key",
+    )
+    assert settings.effective_base_url == "https://openrouter.ai/api/v1"
