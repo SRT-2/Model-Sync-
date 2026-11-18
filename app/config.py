@@ -69,9 +69,13 @@ class Settings(BaseSettings):
 
     @property
     def effective_base_url(self) -> str:
+        # Explicit OpenRouter credentials must win over a stale generic URL
+        # left in older .env files; otherwise provider_name and base URL diverge.
+        if self.openrouter_router_api_key or self.openrouter_api_key:
+            return self.openrouter_base_url
         if self.upstream_base_url:
             return self.upstream_base_url
-        if self.together_api_key and not (self.openrouter_api_key or self.openrouter_router_api_key):
+        if self.together_api_key:
             return self.together_base_url
         return self.openrouter_base_url
 
