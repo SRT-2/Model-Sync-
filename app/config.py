@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     def effective_base_url(self) -> str:
         if self.upstream_base_url:
             return self.upstream_base_url
-        if self.together_api_key and not self.openrouter_api_key:
+        if self.together_api_key and not (self.openrouter_api_key or self.openrouter_router_api_key):
             return self.together_base_url
         return self.openrouter_base_url
 
