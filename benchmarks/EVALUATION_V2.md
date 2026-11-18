@@ -97,26 +97,70 @@ The runner retains response token counts as well as generation metadata. OpenRou
 
 The catalogue snapshot records the exact model IDs and raw `pricing` fields at run time. Model prices in the catalogue are per token. Catalogue estimates are stored separately from actual billed cost and are not substituted into savings calculations.
 
-## Result artifacts
+## Result artifacts and evidence retention
 
-Each execution creates a unique directory under `testing-results/evaluation_v2/<run_id>/`:
+Each live execution creates a unique directory under `testing-results/evaluation_v2/<run_id>/`:
 
 ```text
-pricing_snapshot.json
-prompt_results.json
-prompt_results.csv
-generation_records.jsonl
-raw_generation_records/
-summary.json
+<run_id>/
+├── run.log
+├── run_manifest.json
+├── inputs/
+│   ├── evaluation_v2.json
+│   └── dataset_v2_80.json
+├── pricing_snapshot.json
+├── prompt_results_in_progress.json
+├── prompt_results.json
+├── prompt_results.csv
+├── generation_records.jsonl
+├── raw_completions/
+├── raw_generation_records/
+├── raw_errors/
+├── summary.json
+├── evidence_checksums.json
+└── run_failure.json              # only if the runner aborts
 ```
 
-- `prompt_results.csv`: per-prompt models, token counts, generation IDs, actual costs, catalogue estimates, and reconciliation status.
-- `generation_records.jsonl`: one accounting record per baseline, classifier, or downstream call.
+- `run.log`: timestamped run events, model calls, outcomes, generation IDs, latency, cost, reconciliation state, and exceptions.
+- `run_manifest.json`: run identity, Git commit/branch/working-tree status, Python/platform/package versions, exact model IDs, generation settings, prompt counts, input-file SHA-256 hashes, and pricing-snapshot timestamp. API-key values are never saved.
+- `inputs/`: exact copies of the config and 80-prompt dataset used.
+- `raw_completions/`: sanitized request body, prompt messages and parameters, complete OpenRouter response including model output, generation ID, and generation metadata. Authorization headers and API keys are excluded.
 - `raw_generation_records/`: raw OpenRouter generation metadata keyed by generation ID.
-- `pricing_snapshot.json`: timestamped catalogue entries and raw prices.
+- `raw_errors/`: request messages, status, error payload and exception details for failed calls, without credentials.
+- `generation_records.jsonl`: one normalized accounting record per baseline, classifier, or downstream call.
+- `prompt_results_in_progress.json`: incremental results after each call, retained if the run is interrupted.
+- `prompt_results.csv` and `prompt_results.json`: prompt-level predictions, selected models, token counts, latency, generation IDs, actual costs, catalogue estimates and reconciliation results.
+- `pricing_snapshot.json`: time-stamped catalogue entries and raw prices for the five selected model roles.
 - `summary.json`: classification/routing metrics, API call counts, reconciliation counts, cost totals, and completion status.
+- `evidence_checksums.json`: SHA-256 hashes and file sizes for captured files, to detect later changes.
+- `run_failure.json`: exception and progress information if an unexpected failure aborts the runner.
 
-An actual savings percentage is emitted only when all 80 paired prompt comparisons are complete and an actual cost is available for every baseline, classifier, and downstream call. Partial runs or missing cost records produce no savings percentage.
+Checksums detect changes after capture; they are not a digital signature or proof that the machine was uncompromised. Preserve the entire run directory, its Git commit, and the OpenRouter Activity export together.
+
+### Capture offline validation evidence
+
+Run the V2 offline tests and retain the console transcript, JUnit report, and pytest log:
+
+```powershell
+New-Item -ItemType Directory -Force testing-results/evaluation_v2/preflight | Out-Null
+python -m pytest tests/test_evaluation_v2.py -v --tb=short --junitxml testing-results/evaluation_v2/preflight/pytest_junit.xml --log-file testing-results/evaluation_v2/preflight/pytest.log 2>&1 | Tee-Object -FilePath testing-results/evaluation_v2/preflight/pytest_console.log
+if ($LASTEXITCODE -ne 0) { throw "Evaluation V2 offline tests failed." }
+```
+
+Capture catalogue-preflight output too:
+
+```powershell
+python -m benchmarks.v2_runner --catalog-preflight 2>&1 | Tee-Object -FilePath testing-results/evaluation_v2/preflight/catalog_preflight_console.log
+if ($LASTEXITCODE -ne 0) { throw "OpenRouter catalogue preflight failed." }
+```
+
+These steps do not generate model completions, although catalogue preflight contacts OpenRouter's public model-catalogue endpoint.
+
+### Evidence boundary — what this runner proves
+
+The V2 runner directly calls OpenRouter to compare a fixed single-model baseline against classifier-plus-downstream routing. It is designed to preserve live outputs, per-call usage/cost evidence, and reproducible run metadata.
+
+It does **not** send requests through the running ModelSync FastAPI server. By itself it does not prove live `/v1/chat/completions` end-to-end behaviour, inbound API authentication, streaming/SSE, concurrent load, or API-level failure handling. Those need a separate live-server integration, performance, and reliability harness. The legacy `run_evaluation_suite.py` uses a mock provider for its API endpoint and failure-injection stages, and its performance section is primarily offline controlled mock; do not present those stages as paid-provider live results. The V2 offline pytest suite also has to be executed locally before claiming it passed.
 
 ## Cross-check in OpenRouter Activity
 
