@@ -40,6 +40,18 @@ Provider fallbacks are disabled by default for the controlled comparison. The ac
 
 Do not commit `.env` or include API keys in logs, screenshots, or reports.
 
+## Controlled local fault injection (no OpenRouter calls)
+
+This separate suite uses an in-process provider double to exercise FastAPI error-handling paths: upstream auth, simulated HTTP 429, timeout, connection failure, simulated HTTP 500, classifier timeout fallback, malformed classifier output, classifier auth failure, mid-stream interruption, inbound client authentication, and repeated-prompt cache observation.
+
+Run it after the offline pytest suite:
+
+```powershell
+python -m benchmarks.fault_injection_v2
+```
+
+It creates a separate timestamped folder under `testing-results/fault_injection_v2/` with JSON/CSV results, a log, Markdown report and SHA-256 checksums. The report explicitly labels these as controlled simulations. They are not evidence of actual OpenRouter outages or real upstream provider responses.
+
 ## Run order
 
 ### 1. Update your local branch and install dependencies
