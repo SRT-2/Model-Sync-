@@ -739,7 +739,7 @@ async def performance_tests(
 
 async def reliability_tests(
     router_http: httpx.AsyncClient, router_client: OpenRouterClient,
-    run_dir: Path,
+    run_dir: Path, classifier_model: str,
 ) -> List[Dict[str, Any]]:
     results = []
     health_response = await router_http.get("/health")
@@ -769,7 +769,8 @@ async def reliability_tests(
             "note": "ROUTER_API_KEY is not enabled in the running server.",
         })
 
-    # Invalid key check uses only the public model catalogue endpoint (no inference call).
+    # Invalid-key check uses the authenticated inference endpoint; invalid
+    # credentials should be rejected before any generation can be created.
     bad_key_client = OpenRouterClient(
         "invalid-openrouter-evaluation-key",
         router_client.base_url,
@@ -777,12 +778,17 @@ async def reliability_tests(
         allow_fallbacks=False,
     )
     try:
-        await bad_key_client.fetch_models()
+        await bad_key_client.complete(
+            classifier_model,
+            [{"role": "user", "content": "Reply with OK."}],
+            temperature=None,
+            max_tokens=1,
+        )
         results.append({
             "scenario": "invalid_openrouter_api_key",
             "type": "live_upstream_authentication_negative_test",
             "passed": False,
-            "note": "The model catalogue unexpectedly accepted the invalid credential.",
+            "note": "An inference response was returned for an invalid credential; inspect provider authentication behaviour.",
         })
     except Exception as exc:
         status_code = getattr(exc, "status_code", None)
@@ -1014,7 +1020,9 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
                 router_http, router_client, run_dir, dataset, args.performance_requests
             )
         if "reliability" in selected:
-            phases["reliability"] = await reliability_tests(router_http, router_client, run_dir)
+            phases["reliability"] = await reliability_tests(
+                router_http, router_client, run_dir, models["classifier"]
+            )
 
         summary = {
             "run_id": run_id, "created_at_utc": now(),
@@ -1022,11 +1030,21 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
             "api_base_url": args.base_url, "dataset_count": len(dataset),
             "models": models, "phases_executed": sorted(selected),
             "phase_results": {
-                key: (value if key == "paired_cost_comparison" else {
-                    "total": len(value),
-                    "passed": sum(1 for item in value if item.get("passed") is True),
-                    "failed": sum(1 for item in value if item.get("passed") is False),
-                })
+                key: (
+                    value if key == "paired_cost_comparison"
+                    else {
+                        "total_requests": sum(item.get("requests", 0) for item in value),
+                        "successful_requests": sum(item.get("successful", 0) for item in value),
+                        "failed_requests": sum(item.get("failed", 0) for item in value),
+                        "concurrency_levels": [item.get("concurrency") for item in value],
+                    } if key == "performance"
+                    else {
+                        "total": len(value),
+                        "passed": sum(1 for item in value if item.get("passed") is True),
+                        "failed": sum(1 for item in value if item.get("passed") is False),
+                        "not_applicable": sum(1 for item in value if item.get("passed") is None),
+                    }
+                )
                 for key, value in phases.items()
             },
             "paired_cost_comparison": phases.get("paired_cost_comparison"),
