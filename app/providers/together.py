@@ -1,19 +1,30 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, AsyncIterator, Dict, List, Optional
+
 from fastapi import HTTPException
-from openai import AsyncOpenAI, AuthenticationError, APITimeoutError, APIConnectionError, APIError
+from openai import (
+    AsyncOpenAI,
+    AuthenticationError,
+    APITimeoutError,
+    APIConnectionError,
+    APIError,
+)
 
 from app.config import Settings
 from app.providers.base import LLMProvider
-from app.routing import CLASSIFIER_SYSTEM_PROMPT, parse_label
+from app.routing import CLASSIFIER_SYSTEM_PROMPT, parse_label, CODING, UNIT_TESTING, REASONING
 
 logger = logging.getLogger(__name__)
 
 
 class TogetherProvider(LLMProvider):
-    """Provider connecting to Together AI, OpenRouter, or any OpenAI-compatible endpoint."""
+    """OpenAI-compatible provider adapter (OpenRouter or Together AI).
+
+    The legacy class name is retained to avoid changing existing imports.
+    """
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -26,34 +37,78 @@ class TogetherProvider(LLMProvider):
             max_retries=settings.upstream_max_retries,
         )
 
-    async def classify(self, classifier_model: str, prompt: str) -> str:
-        """Call classifier model to categorize the prompt."""
+    async def classify_with_metadata(self, classifier_model: str, prompt: str) -> Dict[str, Any]:
+        """Classify and optionally expose generation/usage telemetry to an opted-in caller."""
         messages = [
             {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
+        started = time.perf_counter()
         try:
             response = await self.client.chat.completions.create(
                 model=classifier_model,
                 messages=messages,
                 temperature=0.0,
                 max_tokens=20,
+                extra_body={"usage": {"include": True}} if self.settings.provider_name == "openrouter" else None,
             )
-            raw = response.choices[0].message.content or ""
-            return parse_label(raw)
+            latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
+            response_data = response.model_dump()
+            choices = response_data.get("choices") or []
+            raw_output = ""
+            if choices:
+                raw_output = ((choices[0].get("message") or {}).get("content") or "")
+            normalized = raw_output.strip().upper()
+            fallback = normalized not in {CODING, UNIT_TESTING, REASONING}
+            return {
+                "category": parse_label(raw_output),
+                "raw_output": raw_output,
+                "model": response_data.get("model") or classifier_model,
+                "generation_id": response_data.get("id"),
+                "usage": response_data.get("usage") or {},
+                "latency_ms": latency_ms,
+                "fallback": fallback,
+                "fallback_reason": "non_standard_classifier_output" if fallback else None,
+                "metadata_available": True,
+            }
         except AuthenticationError as exc:
-            logger.error("Upstream authentication failed: %s", exc)
+            logger.error("Upstream authentication failed during classification: %s", exc)
             raise HTTPException(
                 status_code=502,
                 detail=f"bad_upstream_api_key: Upstream provider rejected the API key: {exc.message}",
             ) from exc
         except (APITimeoutError, APIConnectionError) as exc:
             logger.error("Upstream connection error during classification: %s", exc)
-            # Default to CODING on transient classification error
-            return "CODING"
+            return {
+                "category": CODING,
+                "raw_output": None,
+                "model": classifier_model,
+                "generation_id": None,
+                "usage": {},
+                "latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
+                "fallback": True,
+                "fallback_reason": type(exc).__name__,
+                "metadata_available": False,
+            }
+        except HTTPException:
+            raise
         except Exception as exc:
             logger.warning("Classification exception, falling back to CODING: %s", exc)
-            return "CODING"
+            return {
+                "category": CODING,
+                "raw_output": None,
+                "model": classifier_model,
+                "generation_id": None,
+                "usage": {},
+                "latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
+                "fallback": True,
+                "fallback_reason": type(exc).__name__,
+                "metadata_available": False,
+            }
+
+    async def classify(self, classifier_model: str, prompt: str) -> str:
+        metadata = await self.classify_with_metadata(classifier_model, prompt)
+        return str(metadata["category"])
 
     async def complete(
         self,
@@ -61,9 +116,9 @@ class TogetherProvider(LLMProvider):
         messages: List[Dict[str, Any]],
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        """Perform non-streaming completion."""
-        # Filter out None kwargs
         clean_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        if self.settings.provider_name == "openrouter":
+            clean_kwargs.setdefault("extra_body", {"usage": {"include": True}})
         try:
             response = await self.client.chat.completions.create(
                 model=model,
@@ -109,8 +164,9 @@ class TogetherProvider(LLMProvider):
         messages: List[Dict[str, Any]],
         **kwargs: Any,
     ) -> AsyncIterator[Dict[str, Any]]:
-        """Perform streaming completion."""
         clean_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        if self.settings.provider_name == "openrouter":
+            clean_kwargs.setdefault("extra_body", {"usage": {"include": True}})
         try:
             stream = await self.client.chat.completions.create(
                 model=model,
