@@ -36,6 +36,41 @@ ROOT = Path(__file__).resolve().parent.parent
 LOG = logging.getLogger("live_test_suite_v2")
 
 
+def validate_router_health(health: Dict[str, Any], models: Dict[str, str]) -> Dict[str, Any]:
+    """Fail closed when the running server is not configured for this experiment."""
+    configured = health.get("configured_models") or {}
+    expected = {
+        "coding": models["coding"],
+        "unit_testing": models["unit_testing"],
+        "reasoning": models["reasoning"],
+        "classifier": models["classifier"],
+    }
+    mismatches = {
+        role: {"expected": value, "actual": configured.get(role)}
+        for role, value in expected.items()
+        if configured.get(role) != value
+    }
+    result = {
+        "provider": health.get("provider"),
+        "health_status": health.get("status"),
+        "expected_provider": "openrouter",
+        "expected_models": expected,
+        "actual_models": configured,
+        "model_mismatches": mismatches,
+        "passed": (
+            health.get("status") == "ok"
+            and health.get("provider") == "openrouter"
+            and not mismatches
+        ),
+    }
+    if not result["passed"]:
+        raise ValueError(
+            "Running ModelSync server does not match Evaluation V2 configuration: "
+            + json.dumps(result, ensure_ascii=False)
+        )
+    return result
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -1017,6 +1052,23 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
         })
         write_json(run_dir / "run_manifest.json", manifest)
         LOG.info("LIVE V2 START run=%s git=%s", run_id, manifest["source_provenance"].get("commit"))
+
+        selected = set(args.phase)
+        server_phases = {"api", "paired-cost", "streaming", "performance", "reliability"}
+        if selected.intersection(server_phases):
+            health_response = await router_http.get("/health")
+            health_payload = health_response.json() if health_response.is_success else {}
+            if not health_response.is_success:
+                raise RuntimeError(
+                    f"ModelSync /health returned HTTP {health_response.status_code}"
+                )
+            server_preflight = validate_router_health(health_payload, models)
+            server_preflight["checked_at_utc"] = now()
+            server_preflight["base_url"] = args.base_url
+            write_json(run_dir / "router_server_preflight.json", server_preflight)
+            manifest["router_server_preflight"] = server_preflight
+            write_json(run_dir / "run_manifest.json", manifest)
+            LOG.info("ModelSync server provider and model mapping match V2 configuration.")
 
         selected = set(args.phase)
         if "preflight" in selected and len(selected) > 1:
