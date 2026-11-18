@@ -769,6 +769,34 @@ async def reliability_tests(
             "note": "ROUTER_API_KEY is not enabled in the running server.",
         })
 
+    # Invalid key check uses only the public model catalogue endpoint (no inference call).
+    bad_key_client = OpenRouterClient(
+        "invalid-openrouter-evaluation-key",
+        router_client.base_url,
+        timeout_seconds=10.0,
+        allow_fallbacks=False,
+    )
+    try:
+        await bad_key_client.fetch_models()
+        results.append({
+            "scenario": "invalid_openrouter_api_key",
+            "type": "live_upstream_authentication_negative_test",
+            "passed": False,
+            "note": "The model catalogue unexpectedly accepted the invalid credential.",
+        })
+    except Exception as exc:
+        status_code = getattr(exc, "status_code", None)
+        results.append({
+            "scenario": "invalid_openrouter_api_key",
+            "type": "live_upstream_authentication_negative_test",
+            "passed": status_code in (401, 403),
+            "http_status": status_code,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+        })
+    finally:
+        await bad_key_client.close()
+
     try:
         await router_client.complete(
             "modelsync-evaluation/nonexistent-model",
