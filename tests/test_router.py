@@ -304,5 +304,6 @@ def test_openrouter_classifier_metadata_captures_generation_usage_and_raw_output
     assert metadata["metadata_available"] is True
     provider.client.chat.completions.create.assert_awaited_once()
     assert provider.client.chat.completions.create.await_args.kwargs["extra_body"] == {
-        "usage": {"include": True}
+        "usage": {"include": True},
+        "provider": {"allow_fallbacks": False},
     }
