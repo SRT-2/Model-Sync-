@@ -90,3 +90,49 @@ def test_fault_injection_mid_stream_records_sse_error() -> None:
     )
     assert record["passed"] is True
     assert record["http_status"] == 200
+
+def test_router_health_preflight_rejects_model_mapping_mismatch() -> None:
+    from benchmarks.live_test_suite_v2 import validate_router_health
+
+    models = {
+        "classifier": "classifier-id",
+        "coding": "coding-id",
+        "unit_testing": "testing-id",
+        "reasoning": "reasoning-id",
+        "baseline": "baseline-id",
+    }
+    health = {
+        "status": "ok",
+        "provider": "openrouter",
+        "configured_models": {
+            "coding": "wrong-coding-id",
+            "unit_testing": "testing-id",
+            "reasoning": "reasoning-id",
+            "classifier": "classifier-id",
+        },
+    }
+    with pytest.raises(ValueError, match="does not match"):
+        validate_router_health(health, models)
+
+
+def test_router_health_preflight_accepts_matching_mapping() -> None:
+    from benchmarks.live_test_suite_v2 import validate_router_health
+
+    models = {
+        "classifier": "classifier-id",
+        "coding": "coding-id",
+        "unit_testing": "testing-id",
+        "reasoning": "reasoning-id",
+        "baseline": "baseline-id",
+    }
+    health = {
+        "status": "ok",
+        "provider": "openrouter",
+        "configured_models": {
+            "coding": "coding-id",
+            "unit_testing": "testing-id",
+            "reasoning": "reasoning-id",
+            "classifier": "classifier-id",
+        },
+    }
+    assert validate_router_health(health, models)["passed"] is True
