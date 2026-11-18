@@ -111,6 +111,17 @@ async def post_router(
             "response_body": body,
         }
         write_json(run_dir / "raw_completions" / f"{stem(prompt_id)}_modelsync_api.json", evidence)
+        if not response.is_success:
+            write_json(
+                run_dir / "raw_errors" / f"{stem(prompt_id)}_modelsync_api.json",
+                {
+                    "prompt_id": prompt_id,
+                    "request": payload,
+                    "http_status": response.status_code,
+                    "response_body": body,
+                    "latency_ms": elapsed,
+                },
+            )
         return {
             "ok": response.is_success and isinstance(body, dict),
             "http_status": response.status_code, "latency_ms": elapsed,
@@ -983,6 +994,19 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
         )
         manifest.update({
             "api_base_url": args.base_url,
+            "cli_settings": {
+                "phase": list(args.phase),
+                "max_tokens": args.max_tokens,
+                "max_cost_usd_stop_threshold": args.max_cost_usd,
+                "performance_requests_per_concurrency": args.performance_requests,
+                "api_timeout_seconds": args.api_timeout,
+            },
+            "environment_flags": {
+                "router_inbound_auth_enabled": bool(os.getenv("ROUTER_API_KEY")),
+                "separate_baseline_key_configured": bool(os.getenv(config["secrets"]["baseline_api_key_env"])),
+                "separate_router_key_configured": bool(os.getenv(config["secrets"]["router_api_key_env"])),
+                "openrouter_allow_fallbacks": os.getenv("OPENROUTER_ALLOW_FALLBACKS", "false").lower() in {"1", "true", "yes"},
+            },
             "test_scope": [
                 "direct model connectivity", "live FastAPI API integration",
                 "paired same-prompt baseline versus ModelSync cost comparison",
