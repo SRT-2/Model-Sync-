@@ -1041,6 +1041,7 @@ async def execute(args: argparse.Namespace) -> Dict[str, Any]:
                 "separate_baseline_key_configured": bool(os.getenv(config["secrets"]["baseline_api_key_env"])),
                 "separate_router_key_configured": bool(os.getenv(config["secrets"]["router_api_key_env"])),
                 "openrouter_allow_fallbacks": os.getenv("OPENROUTER_ALLOW_FALLBACKS", "false").lower() in {"1", "true", "yes"},
+                "upstream_max_retries": os.getenv("UPSTREAM_MAX_RETRIES", "2"),
             },
             "test_scope": [
                 "direct model connectivity", "live FastAPI API integration",
