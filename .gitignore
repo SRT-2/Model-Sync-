@@ -9,3 +9,8 @@ node_modules/
 dist/
 frontend/node_modules/
 frontend/dist/
+
+# Generated Evaluation V2 evidence (keep local results out of source commits)
+testing-results/live_evaluation_v2/
+testing-results/fault_injection_v2/
+testing-results/evaluation-v2-preflight/
