@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     openrouter_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_API_KEY")
     # Dedicated upstream key used by the live ModelSync evaluation harness/server.
     openrouter_router_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_ROUTER_API_KEY")
+    openrouter_allow_fallbacks: bool = Field(default=False, alias="OPENROUTER_ALLOW_FALLBACKS")
     together_api_key: Optional[str] = Field(default=None, alias="TOGETHER_API_KEY")
     upstream_api_key: Optional[str] = Field(default=None, alias="UPSTREAM_API_KEY")
 
