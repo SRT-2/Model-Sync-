@@ -406,7 +406,7 @@ async def paired_cost_comparison(
                 else row.get("predicted_category") or "INVALID"
             ),
         }
-        for row in rows if "category" in row and "predicted_category" in row
+        for row in rows if "category" in row
     ]
     classification = extract_classifier_metrics(metric_rows)
     baseline_costs = [row.get("baseline_cost_usd") for row in rows]
