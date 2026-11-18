@@ -56,3 +56,37 @@ def test_fault_injection_module_imports_without_network_calls() -> None:
     provider = FaultInjectionProvider("upstream_timeout")
     assert provider.mode == "upstream_timeout"
     assert provider.classification_calls == 0
+
+def test_fault_injection_upstream_timeout_returns_504() -> None:
+    from benchmarks.fault_injection_v2 import execute_case
+
+    record = execute_case(
+        "test-timeout", "upstream_timeout",
+        payload={
+            "model": "smart-router",
+            "messages": [{"role": "user", "content": "test"}],
+            "include_router_telemetry": True,
+        },
+        expected_status=504,
+        expected_substring="upstream_timeout",
+    )
+    assert record["passed"] is True
+    assert record["http_status"] == 504
+
+
+def test_fault_injection_mid_stream_records_sse_error() -> None:
+    from benchmarks.fault_injection_v2 import execute_case
+
+    record = execute_case(
+        "test-stream-interruption", "stream_interrupted",
+        payload={
+            "model": "smart-router",
+            "messages": [{"role": "user", "content": "test"}],
+            "stream": True,
+            "include_router_telemetry": True,
+        },
+        expected_status=200,
+        expected_substring="upstream_error",
+    )
+    assert record["passed"] is True
+    assert record["http_status"] == 200
