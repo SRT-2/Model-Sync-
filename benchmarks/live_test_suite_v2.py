@@ -203,6 +203,7 @@ async def router_generation_accounting(
         "actual_cost_usd": item.get("actual_cost_usd"),
         "reconciliation_status": item.get("reconciliation_status"),
         "provider_name": data.get("provider_name"), "actual_model": data.get("model"),
+        "raw_generation_record": item.get("generation_record"),
     }
     append_jsonl(run_dir / "generation_records.jsonl", record)
     return record
@@ -264,17 +265,13 @@ async def paired_cost_comparison(
             "actual_cost_usd": None, "usage": {},
         }
         if classifier:
-            classifier_generation = await reconcile(
-                router_client, run_dir, classifier.get("generation_id"),
-                prompt_id, "classifier", classifier.get("usage") or {},
-            )
             write_json(
                 run_dir / "raw_completions" / f"{stem(prompt_id)}_classifier.json",
                 {
                     "prompt_id": prompt_id,
                     "classifier_telemetry": classifier,
-                    "generation_record": classifier_generation.get("generation_record"),
-                    "reconciliation_status": classifier_generation.get("reconciliation_status"),
+                    "generation_record": classifier_record.get("raw_generation_record"),
+                    "reconciliation_status": classifier_record.get("reconciliation_status"),
                 },
             )
 
