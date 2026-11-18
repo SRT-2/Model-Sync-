@@ -33,12 +33,12 @@ The current selected model mapping is recorded in `benchmarks/evaluation_v2.json
 | Role | OpenRouter model ID | Screenshot reference input / output per 1M tokens |
 |---|---|---:|
 | Classifier | `z-ai/glm-5.3-flash` | $0.0399 / $0.0784 |
-| CODING | `deepseek/deepseek-v4.1-flash-1017` | $0.006 / $0.50* |
+| CODING | `deepseek/deepseek-v4.1-flash-1017` | $0.036 / $0.50* |
 | UNIT_TESTING | `deepseek/deepseek-v4-flash-0731` | $0.0434 / $0.30 |
 | REASONING | `openai/gpt-5.6-luna` | $0.20 / $1.20 |
 | Baseline | `anthropic/claude-sonnet-5` | $2.00 / $10.00 |
 
-The GLM, DeepSeek V4 Flash, GPT-5.6 Luna, and Claude Sonnet 5 reference prices above were transcribed from user-provided OpenRouter screenshots dated November 12, 2026. The DeepSeek V4.1 Flash 1017 price is from the OpenRouter listing checked November 16, 2026 (*input/output per 1M tokens; verify in preflight). These are retained as references only. Immediately before a run, use the current OpenRouter catalogue snapshot as the recorded catalogue price source, and use reconciled generation records for actual billed cost.
+The GLM, DeepSeek V4 Flash, GPT-5.6 Luna, and Claude Sonnet 5 reference prices above were transcribed from user-provided OpenRouter screenshots dated November 12, 2026. The DeepSeek V4.1 Flash 1017 price is from the OpenRouter listing checked November 18, 2026 (*input/output per 1M tokens; verify in preflight). These are retained as references only. Immediately before a run, use the current OpenRouter catalogue snapshot as the recorded catalogue price source, and use reconciled generation records for actual billed cost.
 
 V2 rejects unknown, unpriced, or zero-priced model entries, because this is a paid-model experiment. Model IDs can be overridden with environment variables if a model is replaced.
 
