@@ -24,7 +24,7 @@ jobs:
       - name: Run offline test suite
         run: |
           mkdir -p testing-results/preflight
-          python -m pytest tests/test_evaluation_v2.py tests/test_router.py -v --tb=short --junitxml=testing-results/preflight/pytest-junit.xml
+          python -m pytest tests/test_evaluation_v2.py tests/test_router.py tests/test_live_test_suite_v2.py -v --tb=short --junitxml=testing-results/preflight/pytest-junit.xml
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
