@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from types import SimpleNamespace
 from typing import Any, AsyncIterator, Dict, List
+from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
@@ -268,3 +271,38 @@ def test_router_key_has_priority_for_openrouter_provider():
     )
     assert settings.effective_api_key == "router-test-key"
     assert settings.provider_name == "openrouter"
+
+def test_openrouter_classifier_metadata_captures_generation_usage_and_raw_output():
+    from app.providers.together import TogetherProvider
+
+    settings = Settings(openrouter_router_api_key="test-router-key")
+    provider = TogetherProvider(settings)
+    response_data = {
+        "id": "gen-classifier-test",
+        "model": "z-ai/glm-5.3-flash",
+        "choices": [{"message": {"role": "assistant", "content": "UNIT_TESTING"}}],
+        "usage": {
+            "prompt_tokens": 40,
+            "completion_tokens": 2,
+            "total_tokens": 42,
+            "cost": 0.00001,
+        },
+    }
+    fake_response = SimpleNamespace(model_dump=lambda: response_data)
+    provider.client.chat.completions.create = AsyncMock(return_value=fake_response)
+
+    metadata = asyncio.run(
+        provider.classify_with_metadata("z-ai/glm-5.3-flash", "write pytest tests")
+    )
+
+    assert metadata["category"] == "UNIT_TESTING"
+    assert metadata["raw_output"] == "UNIT_TESTING"
+    assert metadata["raw_response"]["id"] == "gen-classifier-test"
+    assert metadata["generation_id"] == "gen-classifier-test"
+    assert metadata["usage"]["cost"] == 0.00001
+    assert metadata["fallback"] is False
+    assert metadata["metadata_available"] is True
+    provider.client.chat.completions.create.assert_awaited_once()
+    assert provider.client.chat.completions.create.await_args.kwargs["extra_body"] == {
+        "usage": {"include": True}
+    }
