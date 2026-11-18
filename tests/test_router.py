@@ -260,3 +260,11 @@ def test_streaming_chat_completion_includes_opt_in_router_telemetry(client):
     first_chunk = json.loads(first_data)
     assert first_chunk["router_telemetry"]["routed_category"] == "CODING"
     assert first_chunk["router_telemetry"]["routed_model"]
+
+def test_router_key_has_priority_for_openrouter_provider():
+    settings = Settings(
+        openrouter_api_key="general-key",
+        openrouter_router_api_key="router-test-key",
+    )
+    assert settings.effective_api_key == "router-test-key"
+    assert settings.provider_name == "openrouter"
