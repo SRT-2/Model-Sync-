@@ -168,6 +168,7 @@ class TogetherProvider(LLMProvider):
         clean_kwargs = {k: v for k, v in kwargs.items() if v is not None}
         if self.settings.provider_name == "openrouter":
             clean_kwargs.setdefault("extra_body", {"usage": {"include": True}})
+            clean_kwargs.setdefault("stream_options", {"include_usage": True})
         try:
             stream = await self.client.chat.completions.create(
                 model=model,
