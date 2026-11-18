@@ -433,6 +433,7 @@ async def call_and_account(
             ),
             "catalog_estimated_cost_usd": estimate,
             "reconciliation_status": reconciliation.get("status"),
+            "raw_completion_file": None,
         }
         raw_dir = run_dir / "raw_generation_records"
         raw_dir.mkdir(parents=True, exist_ok=True)
@@ -447,13 +448,7 @@ async def call_and_account(
             "experiment": experiment,
             "call_role": call_role,
             "requested_model": model_id,
-            "request": {
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "stream": False,
-                "usage": {"include": True},
-            },
+            "request_body": result.get("request_body", {}),
             "http_status": result.get("http_status"),
             "latency_ms": result.get("latency_ms"),
             "generation_id": generation_id,
@@ -602,6 +597,14 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             elif call_record.get("status") == "success":
                 budget_unknown = True
 
+        def save_progress(current_row: Dict[str, Any]) -> None:
+            # Persist prompt-level progress after each call so an interrupted run
+            # still has a readable record in addition to per-call JSONL evidence.
+            write_json(
+                run_dir / "prompt_results_in_progress.json",
+                prompt_records + [current_row],
+            )
+
         for index, item in enumerate(dataset, start=1):
             prompt_id = item["id"]
             category = item["category"]
@@ -623,6 +626,7 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             call_records.append(baseline["record"])
             append_jsonl(run_dir / "generation_records.jsonl", baseline["record"])
             update_budget(baseline["record"])
+            save_progress(row)
 
             if budget_unknown or budget_spend >= max_cost:
                 stop_reason = "cost_budget_reached_or_cost_unavailable"
@@ -645,6 +649,7 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             call_records.append(classifier["record"])
             append_jsonl(run_dir / "generation_records.jsonl", classifier["record"])
             update_budget(classifier["record"])
+            save_progress(row)
 
             raw_label = ""
             if classifier["result"] is not None:
@@ -683,6 +688,7 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             append_jsonl(run_dir / "generation_records.jsonl", downstream["record"])
             update_budget(downstream["record"])
             prompt_records.append(row)
+            write_json(run_dir / "prompt_results_in_progress.json", prompt_records)
 
             LOGGER.info(
                 "[%d/%d] %s expected=%s predicted=%s route=%s budget_spend_guard=$%.6f",
@@ -783,6 +789,8 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
             "raw_completions_directory": "raw_completions/",
             "raw_generation_records_directory": "raw_generation_records/",
             "raw_errors_directory": "raw_errors/",
+            "progress_file": "prompt_results_in_progress.json",
+            "checksums_file": "evidence_checksums.json",
         }
         write_json(run_dir / "prompt_results.json", prompt_records)
         write_json(run_dir / "summary.json", summary)
@@ -844,6 +852,22 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
                     "downstream_catalog_estimate_usd": downstream.get("catalog_estimated_cost_usd"),
                     "downstream_reconciliation": downstream.get("reconciliation_status"),
                 })
+        # Hash every evidence artifact after the summary and CSV have been written.
+        checksum_entries = {}
+        for artifact in sorted(run_dir.rglob("*")):
+            if artifact.is_file() and artifact.name != "evidence_checksums.json":
+                checksum_entries[str(artifact.relative_to(run_dir))] = {
+                    "sha256": sha256_file(artifact),
+                    "size_bytes": artifact.stat().st_size,
+                }
+        write_json(run_dir / "evidence_checksums.json", {
+            "run_id": run_id,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "algorithm": "SHA-256",
+            "files": checksum_entries,
+            "note": "Hashes detect later changes to the captured files; preserve the folder and this manifest together."
+        })
+        LOGGER.info("Evaluation V2 evidence checksums saved.")
         LOGGER.info("Evaluation V2 artifacts saved to %s", run_dir)
         LOGGER.info("Execution summary: prompts=%d successful_calls=%d failed_calls=%d reconciled=%d savings=%s",
                     len(prompt_records), summary["execution"]["successful_calls"],
@@ -851,9 +875,25 @@ async def run_live(args: argparse.Namespace) -> Dict[str, Any]:
                     summary["execution"]["generation_records_reconciled"],
                     savings)
         return summary
+    except Exception as exc:
+        write_json(run_dir / "run_failure.json", {
+            "run_id": run_id,
+            "failed_at_utc": datetime.now(timezone.utc).isoformat(),
+            "exception_type": type(exc).__name__,
+            "error": str(exc),
+            "prompts_completed_or_started": len(prompt_records),
+            "call_records_written": len(call_records),
+        })
+        LOGGER.exception("Evaluation V2 run aborted: %s", exc)
+        raise
     finally:
         await baseline_client.close()
         await router_client.close()
+        for handler in logging.getLogger().handlers:
+            if getattr(handler, "_evaluation_v2_file", False):
+                handler.flush()
+                handler.close()
+                logging.getLogger().removeHandler(handler)
 
 
 async def catalog_preflight(config_path: Path, output_dir: Path) -> Dict[str, Any]:
