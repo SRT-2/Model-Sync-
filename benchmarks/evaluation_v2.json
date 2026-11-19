@@ -44,9 +44,9 @@
     "save_raw_generation_records": true,
     "actual_cost_source_priority": [
       "generation_record.total_cost",
-      "generation_record.cost",
-      "completion_response.usage.cost"
+      "generation_record.cost"
     ],
+    "provisional_cost_source": "completion_response.usage.cost",
     "catalog_estimates_are_separate_from_actual_billing": true
   },
   "secrets": {
