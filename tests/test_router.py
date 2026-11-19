@@ -351,10 +351,16 @@ def test_openrouter_credentials_override_stale_generic_upstream_url():
 
 
 
-def test_classifier_default_output_budget_is_configurable_and_sent_to_provider():
+def test_classifier_default_output_budget_is_configurable_and_sent_to_provider(
+    monkeypatch,
+):
     from app.providers.together import TogetherProvider
 
-    settings = Settings(openrouter_router_api_key="test-router-key")
+    monkeypatch.delenv("CLASSIFIER_MAX_OUTPUT_TOKENS", raising=False)
+    settings = Settings(
+        _env_file=None,
+        openrouter_router_api_key="test-router-key",
+    )
     provider = TogetherProvider(settings)
     response_data = {
         "id": "gen-classifier-budget-default",
