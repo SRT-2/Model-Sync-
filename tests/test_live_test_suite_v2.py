@@ -138,3 +138,122 @@ def test_router_health_preflight_accepts_matching_mapping() -> None:
         },
     }
     assert validate_router_health(health, models)["passed"] is True
+
+
+def test_deferred_reconciler_uses_generation_record_cost() -> None:
+    import asyncio
+    from benchmarks.reconcile_live_run_v2 import fetch_one
+
+    class FakeClient:
+        async def get_generation(self, generation_id: str):
+            return {"data": {
+                "id": generation_id,
+                "model": "vendor/model",
+                "provider_name": "Provider",
+                "total_cost": 0.000123,
+            }}
+
+    item = {
+        "call_role": "classifier",
+        "generation_id": "gen-test",
+        "usage": {"cost": 0.000999},
+    }
+    result = asyncio.run(fetch_one(item, FakeClient(), FakeClient(), asyncio.Semaphore(1)))
+    assert result["reconciliation_status"] == "reconciled"
+    assert result["actual_cost_usd"] == pytest.approx(0.000123)
+    assert result["provider_name"] == "Provider"
+
+
+def test_deferred_reconciler_keeps_404_as_pending() -> None:
+    import asyncio
+    from benchmarks.reconcile_live_run_v2 import fetch_one
+
+    class NotFoundError(Exception):
+        status_code = 404
+
+    class FakeClient:
+        async def get_generation(self, generation_id: str):
+            raise NotFoundError("not available yet")
+
+    item = {
+        "call_role": "classifier",
+        "generation_id": "gen-pending",
+        "usage": {"cost": 0.000005},
+    }
+    result = asyncio.run(fetch_one(item, FakeClient(), FakeClient(), asyncio.Semaphore(1)))
+    assert result["reconciliation_status"] == "pending_not_found"
+    assert result["actual_cost_usd"] is None
+    assert result["usage"]["cost"] == 0.000005
+
+
+def _paired_rows_and_records(pending_last: bool = False):
+    rows = []
+    generation_records = []
+    for index in range(80):
+        prompt_id = f"P{index:03d}"
+        rows.append({
+            "prompt_id": prompt_id,
+            "category": "CODING",
+            "difficulty": "clear",
+            "status": "success",
+            "baseline_generation_id": f"base-{index}",
+            "classifier_generation_id": f"class-{index}",
+            "downstream_generation_id": f"down-{index}",
+            "baseline_cost_usd": 0.1,
+            "classifier_cost_usd": 0.01,
+            "downstream_cost_usd": 0.02,
+            "baseline_reconciliation_status": "reconciled",
+            "classifier_reconciliation": "reconciled",
+            "downstream_reconciliation": "reconciled",
+        })
+        for role, cost in (
+            ("baseline_completion", 0.1),
+            ("classifier", 0.01),
+            ("downstream_completion", 0.02),
+        ):
+            is_pending = pending_last and index == 79 and role == "classifier"
+            generation_records.append({
+                "prompt_id": prompt_id,
+                "call_role": role,
+                "generation_id": f"{role}-{index}",
+                "usage": {"cost": cost},
+                "actual_cost_usd": None if is_pending else cost,
+                "reconciliation_status": "pending_not_found" if is_pending else "reconciled",
+                "raw_generation_record": None if is_pending else {"data": {"total_cost": cost}},
+            })
+    return rows, generation_records
+
+
+def test_deferred_paired_costs_withhold_savings_while_any_record_is_pending(tmp_path: Path) -> None:
+    import json
+    from benchmarks.reconcile_live_run_v2 import update_paired_costs
+
+    rows, records = _paired_rows_and_records(pending_last=True)
+    target = tmp_path / "paired_cost_results.json"
+    target.write_text(json.dumps({"summary": {}, "records": rows}), encoding="utf-8")
+
+    summary = update_paired_costs(tmp_path, records)
+
+    assert summary["prompts_compared"] == 80
+    assert summary["comparison_complete"] is False
+    assert summary["actual_savings_percentage"] is None
+    assert summary["actual_costs_complete"] is False
+
+
+def test_deferred_paired_costs_report_savings_only_after_all_240_records_reconcile(tmp_path: Path) -> None:
+    import json
+    from benchmarks.reconcile_live_run_v2 import update_paired_costs
+
+    rows, records = _paired_rows_and_records()
+    target = tmp_path / "paired_cost_results.json"
+    target.write_text(json.dumps({"summary": {}, "records": rows}), encoding="utf-8")
+
+    summary = update_paired_costs(tmp_path, records)
+
+    assert summary["prompts_compared"] == 80
+    assert summary["comparison_complete"] is True
+    assert summary["baseline_actual_cost_usd"] == pytest.approx(8.0)
+    assert summary["modelsync_classifier_actual_cost_usd"] == pytest.approx(0.8)
+    assert summary["modelsync_downstream_actual_cost_usd"] == pytest.approx(1.6)
+    assert summary["modelsync_total_actual_cost_usd"] == pytest.approx(2.4)
+    assert summary["actual_savings_percentage"] == pytest.approx(70.0)
