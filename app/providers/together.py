@@ -212,6 +212,12 @@ class TogetherProvider(LLMProvider):
                 status_code=502,
                 detail=f"bad_upstream_api_key: Upstream provider rejected the API key: {exc.message}",
             ) from exc
+        except (APITimeoutError, APIConnectionError) as exc:
+            logger.error("Upstream connection error during stream: %s", exc)
+            raise HTTPException(
+                status_code=502,
+                detail=f"upstream_stream_error: {str(exc)}",
+            ) from exc
         except APIError as exc:
             upstream_status = getattr(exc, "status_code", None)
             if upstream_status == 429:
@@ -231,12 +237,6 @@ class TogetherProvider(LLMProvider):
                     headers={"Retry-After": retry_after} if retry_after else None,
                 ) from exc
             logger.error("Upstream API error during stream: %s", exc)
-            raise HTTPException(
-                status_code=502,
-                detail=f"upstream_stream_error: {str(exc)}",
-            ) from exc
-        except (APITimeoutError, APIConnectionError) as exc:
-            logger.error("Upstream connection error during stream: %s", exc)
             raise HTTPException(
                 status_code=502,
                 detail=f"upstream_stream_error: {str(exc)}",
