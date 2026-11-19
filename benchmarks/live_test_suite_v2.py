@@ -105,7 +105,10 @@ async def reconcile(
     client: OpenRouterClient, run_dir: Path, generation_id: Optional[str],
     prompt_id: str, call_role: str, usage: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    result = await reconcile_generation(client, generation_id, attempts=4, delay_seconds=0.75)
+    # Generation records can appear well after the completion response. Make one
+    # non-blocking lookup here; the run-level reconciler retries later without
+    # delaying or aborting the 80-prompt experiment.
+    result = await reconcile_generation(client, generation_id, attempts=1, delay_seconds=0.0)
     record = result.get("record")
     if generation_id and record is not None:
         write_json(run_dir / "raw_generation_records" / f"{stem(generation_id)}.json", record)
@@ -315,10 +318,7 @@ async def paired_cost_comparison(
             baseline_client, run_dir, prompt_id, models["baseline"], messages, max_tokens
         )
         baseline_cost = baseline.get("actual_cost_usd")
-        if (
-            baseline_cost is None
-            or baseline.get("reconciliation_status") != "reconciled"
-        ):
+        if baseline_cost is None:
             rows.append({
                 "prompt_id": prompt_id, "category": item["category"],
                 "baseline": baseline, "status": "baseline_cost_unreconciled",
@@ -327,15 +327,9 @@ async def paired_cost_comparison(
             stop_reason = "baseline_cost_unavailable_or_unreconciled"
             break
         spend_guard += float(baseline_cost)
-        if spend_guard >= max_cost:
-            rows.append({
-                "prompt_id": prompt_id, "category": item["category"],
-                "baseline": baseline, "status": "stopped_after_baseline_budget",
-            })
-            write_json(run_dir / "paired_cost_in_progress.json", rows)
-            stop_reason = "max_cost_budget_reached"
-            break
 
+        # Finish the paired ModelSync request before applying the spend
+        # threshold, so the experiment never leaves a half-pair at the limit.
         payload = {
             "model": "smart-router", "messages": messages,
             "max_tokens": max_tokens, "stream": False,
@@ -432,13 +426,8 @@ async def paired_cost_comparison(
         rows.append(row)
         write_json(run_dir / "paired_cost_in_progress.json", rows)
 
-        if (
-            classifier_record.get("reconciliation_status") != "reconciled"
-            or downstream_record.get("reconciliation_status") != "reconciled"
-            or classifier_cost is None
-            or downstream_cost is None
-        ):
-            stop_reason = "modelsync_generation_cost_unavailable_or_unreconciled"
+        if classifier_cost is None or downstream_cost is None:
+            stop_reason = "completion_response_cost_unavailable"
             break
         if spend_guard >= max_cost:
             stop_reason = "max_cost_budget_reached"
@@ -492,7 +481,12 @@ async def paired_cost_comparison(
         "model_selection_accuracy": round(
             sum(1 for row in rows if row.get("model_selection_correct"))/len(rows), 4
         ) if rows else None,
-        "note": "Actual costs come from OpenRouter generation records. Savings is withheld for incomplete or unreconciled paired results.",
+        "note": (
+            "Interim costs use OpenRouter completion-response usage.cost. "
+            "Actual savings is withheld until all 240 generation records are "
+            "reconciled. Run benchmarks.reconcile_live_run_v2 against this "
+            "run directory when OpenRouter generation records become available."
+        ),
     }
     write_json(run_dir / "paired_cost_results.json", {"summary": result, "records": rows})
     flat = []
@@ -894,7 +888,7 @@ async def connectivity_tests(
         try:
             call = await client.complete(
                 model, [{"role": "user", "content": "Reply with READY."}],
-                temperature=None, max_tokens=8,
+                temperature=None, max_tokens=64,
             )
             accounting = await router_generation_accounting(
                 client, run_dir, f"CONNECT_{role}", role,
@@ -906,7 +900,7 @@ async def connectivity_tests(
                     "request": {
                         "model": model,
                         "messages": [{"role": "user", "content": "Reply with READY."}],
-                        "temperature": None, "max_tokens": 8,
+                        "temperature": None, "max_tokens": 64,
                     },
                     "response": call.get("response"),
                     "generation_record": accounting.get("raw_generation_record"),
@@ -920,7 +914,10 @@ async def connectivity_tests(
                 "generation_id": call.get("generation_id"),
                 "reconciliation_status": accounting.get("reconciliation_status"),
                 "actual_cost_usd": accounting.get("actual_cost_usd"),
-                "output": call.get("content"), "passed": bool(call.get("content")),
+                "provider_name": accounting.get("provider_name"),
+                "finish_reason": call.get("finish_reason"),
+                "output": call.get("content"),
+                "passed": bool(call.get("content")) and call.get("finish_reason") != "length",
             })
         except Exception as exc:
             results.append({
