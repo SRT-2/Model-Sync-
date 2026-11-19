@@ -127,6 +127,7 @@ def update_connectivity(run_dir: Path, records: List[Dict[str, Any]]) -> Optiona
             continue
         row["reconciliation_status"] = record.get("reconciliation_status")
         row["actual_cost_usd"] = record.get("actual_cost_usd")
+        row["completion_response_reported_cost_usd"] = record.get("completion_response_reported_cost_usd")
         row["provider_name"] = record.get("provider_name")
         row["actual_model"] = record.get("actual_model") or row.get("actual_model")
     write_json(path, rows)
