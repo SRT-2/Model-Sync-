@@ -37,11 +37,12 @@ def read_jsonl(path: Path) -> List[Dict[str, Any]]:
 
 def actual_cost(record: Optional[Dict[str, Any]], usage: Optional[Dict[str, Any]]) -> Optional[float]:
     data = generation_data(record)
+    # Only generation-record fields are authoritative actual costs.
+    # Completion-response usage.cost is retained separately as provisional evidence.
     for value in (
         data.get("total_cost"),
         data.get("cost"),
         (data.get("usage") or {}).get("cost") if isinstance(data.get("usage"), dict) else None,
-        (usage or {}).get("cost"),
     ):
         if value is not None:
             try:
@@ -79,9 +80,20 @@ async def fetch_one(
             item["reconciliation_status"] = "reconciled"
             item["reconciliation_error"] = None
             item["actual_cost_usd"] = actual_cost(raw, item.get("usage"))
+            item["completion_response_reported_cost_usd"] = (item.get("usage") or {}).get("cost")
             item["provider_name"] = data.get("provider_name") or item.get("provider_name")
             item["actual_model"] = data.get("model") or item.get("actual_model")
         except Exception as exc:
+            # Preserve the completion response's cost for audit, but never treat
+            # it as verified actual spend before the generation record is found.
+            provisional = item.get("completion_response_reported_cost_usd")
+            if provisional is None:
+                provisional = (item.get("usage") or {}).get("cost")
+            if provisional is None:
+                provisional = item.get("actual_cost_usd")
+            item["completion_response_reported_cost_usd"] = provisional
+            item["actual_cost_usd"] = None
+            item.pop("raw_generation_record", None)
             status_code = getattr(exc, "status_code", None)
             item["reconciliation_status"] = (
                 "pending_not_found" if status_code == 404
