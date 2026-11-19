@@ -952,6 +952,7 @@ async def connectivity_tests(
                 "generation_id": call.get("generation_id"),
                 "reconciliation_status": accounting.get("reconciliation_status"),
                 "actual_cost_usd": accounting.get("actual_cost_usd"),
+                "completion_response_reported_cost_usd": accounting.get("completion_response_reported_cost_usd"),
                 "provider_name": accounting.get("provider_name"),
                 "finish_reason": call.get("finish_reason"),
                 "output": call.get("content"),
