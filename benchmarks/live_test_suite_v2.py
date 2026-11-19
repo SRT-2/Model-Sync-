@@ -118,9 +118,13 @@ async def reconcile(
         "generation_record": record,
         "reconciliation_status": result.get("status"),
         "reconciliation_error": result.get("error"),
-        "actual_cost_usd": extract_actual_cost({
-            "generation_record": record, "usage": usage_value
-        }),
+        # Completion-response usage.cost is useful for a provisional budget
+        # estimate, but it is not considered verified actual cost until the
+        # generation metadata endpoint returns a record.
+        "actual_cost_usd": (
+            extract_actual_cost({"generation_record": record}) if record is not None else None
+        ),
+        "completion_response_reported_cost_usd": usage_value.get("cost"),
         "usage": usage_value,
         "call_role": call_role,
         "prompt_id": prompt_id,
@@ -203,6 +207,7 @@ async def baseline_call(
             "generation_id": result.get("generation_id"),
             "usage": result.get("usage") or {},
             "actual_cost_usd": accounting.get("actual_cost_usd"),
+            "completion_response_reported_cost_usd": accounting.get("completion_response_reported_cost_usd"),
             "reconciliation_status": accounting.get("reconciliation_status"),
             "finish_reason": result.get("finish_reason"),
             "response_text": result.get("content") or "",
@@ -250,6 +255,7 @@ async def router_generation_accounting(
         "status": "success" if generation_id else "missing_generation_id",
         "generation_id": generation_id, "usage": usage or {},
         "actual_cost_usd": item.get("actual_cost_usd"),
+        "completion_response_reported_cost_usd": item.get("completion_response_reported_cost_usd"),
         "reconciliation_status": item.get("reconciliation_status"),
         "provider_name": data.get("provider_name"), "actual_model": data.get("model"),
         "raw_generation_record": item.get("generation_record"),
@@ -318,15 +324,16 @@ async def paired_cost_comparison(
             baseline_client, run_dir, prompt_id, models["baseline"], messages, max_tokens
         )
         baseline_cost = baseline.get("actual_cost_usd")
-        if baseline_cost is None:
+        baseline_reported_cost = baseline.get("completion_response_reported_cost_usd")
+        if baseline_reported_cost is None:
             rows.append({
                 "prompt_id": prompt_id, "category": item["category"],
-                "baseline": baseline, "status": "baseline_cost_unreconciled",
+                "baseline": baseline, "status": "baseline_response_cost_unavailable",
             })
             write_json(run_dir / "paired_cost_in_progress.json", rows)
-            stop_reason = "baseline_cost_unavailable_or_unreconciled"
+            stop_reason = "baseline_response_cost_unavailable"
             break
-        spend_guard += float(baseline_cost)
+        spend_guard += float(baseline_cost if baseline_cost is not None else baseline_reported_cost)
 
         # Finish the paired ModelSync request before applying the spend
         # threshold, so the experiment never leaves a half-pair at the limit.
@@ -370,12 +377,20 @@ async def paired_cost_comparison(
 
         classifier_cost = classifier_record.get("actual_cost_usd")
         downstream_cost = downstream_record.get("actual_cost_usd")
+        classifier_reported_cost = classifier_record.get("completion_response_reported_cost_usd")
+        downstream_reported_cost = downstream_record.get("completion_response_reported_cost_usd")
         router_total = (
             float(classifier_cost) + float(downstream_cost)
             if classifier_cost is not None and downstream_cost is not None else None
         )
-        if router_total is not None:
-            spend_guard += router_total
+        router_reported_total = (
+            float(classifier_reported_cost) + float(downstream_reported_cost)
+            if classifier_reported_cost is not None and downstream_reported_cost is not None else None
+        )
+        if router_reported_total is not None:
+            spend_guard += float(
+                router_total if router_total is not None else router_reported_total
+            )
 
         choices = body.get("choices") or []
         message = (choices[0].get("message") or {}) if choices else {}
@@ -389,6 +404,7 @@ async def paired_cost_comparison(
             "classifier_generation_id": classifier.get("generation_id"),
             "classifier_usage": classifier.get("usage") or {},
             "classifier_cost_usd": classifier_cost,
+            "classifier_completion_response_reported_cost_usd": classifier_reported_cost,
             "classifier_reconciliation": classifier_record.get("reconciliation_status"),
             "classifier_latency_ms": classifier.get("latency_ms"),
             "routed_category": body.get("routed_category") or telemetry.get("routed_category"),
@@ -406,18 +422,21 @@ async def paired_cost_comparison(
             "baseline_generation_id": baseline.get("generation_id"),
             "baseline_usage": baseline.get("usage") or {},
             "baseline_cost_usd": baseline_cost,
+            "baseline_completion_response_reported_cost_usd": baseline_reported_cost,
             "baseline_reconciliation_status": baseline.get("reconciliation_status"),
             "baseline_latency_ms": baseline.get("latency_ms"),
             "downstream_model": downstream_record.get("actual_model") or body.get("model"),
             "downstream_generation_id": downstream_id,
             "downstream_usage": downstream_usage,
             "downstream_cost_usd": downstream_cost,
+            "downstream_completion_response_reported_cost_usd": downstream_reported_cost,
             "downstream_reconciliation": downstream_record.get("reconciliation_status"),
             "downstream_latency_ms": api_result.get("latency_ms"),
             "downstream_response": message.get("content") or "",
             "router_http_status": api_result.get("http_status"),
             "router_error": api_result.get("error"),
             "modelsync_total_cost_usd": router_total,
+            "modelsync_total_completion_response_reported_cost_usd": router_reported_total,
             "status": (
                 "success" if baseline.get("status") == "success" and api_result["ok"]
                 else "failed"
@@ -426,7 +445,7 @@ async def paired_cost_comparison(
         rows.append(row)
         write_json(run_dir / "paired_cost_in_progress.json", rows)
 
-        if classifier_cost is None or downstream_cost is None:
+        if classifier_reported_cost is None or downstream_reported_cost is None:
             stop_reason = "completion_response_cost_unavailable"
             break
         if spend_guard >= max_cost:
@@ -481,11 +500,11 @@ async def paired_cost_comparison(
         ),
         "modelsync_total_actual_cost_usd": round(router_total, 10) if complete else None,
         "completion_response_reported_costs_provisional_usd": {
-            "baseline": round(sum(float((row.get("baseline_usage") or {}).get("cost", 0) or 0)
+            "baseline": round(sum(float(row.get("baseline_completion_response_reported_cost_usd") or 0)
                                   for row in rows), 10),
-            "classifier": round(sum(float((row.get("classifier_usage") or {}).get("cost", 0) or 0)
+            "classifier": round(sum(float(row.get("classifier_completion_response_reported_cost_usd") or 0)
                                     for row in rows), 10),
-            "downstream": round(sum(float((row.get("downstream_usage") or {}).get("cost", 0) or 0)
+            "downstream": round(sum(float(row.get("downstream_completion_response_reported_cost_usd") or 0)
                                     for row in rows), 10),
         },
         "actual_savings_percentage": savings,
@@ -517,18 +536,22 @@ async def paired_cost_comparison(
             "baseline_prompt_tokens": (row.get("baseline_usage") or {}).get("prompt_tokens"),
             "baseline_completion_tokens": (row.get("baseline_usage") or {}).get("completion_tokens"),
             "baseline_cost_usd": row.get("baseline_cost_usd"),
+            "baseline_completion_response_reported_cost_usd": row.get("baseline_completion_response_reported_cost_usd"),
             "baseline_reconciliation_status": row.get("baseline_reconciliation_status"),
             "classifier_model": row.get("classifier_model"),
             "classifier_generation_id": row.get("classifier_generation_id"),
             "classifier_prompt_tokens": (row.get("classifier_usage") or {}).get("prompt_tokens"),
             "classifier_completion_tokens": (row.get("classifier_usage") or {}).get("completion_tokens"),
             "classifier_cost_usd": row.get("classifier_cost_usd"),
+            "classifier_completion_response_reported_cost_usd": row.get("classifier_completion_response_reported_cost_usd"),
             "downstream_model": row.get("downstream_model"),
             "downstream_generation_id": row.get("downstream_generation_id"),
             "downstream_prompt_tokens": (row.get("downstream_usage") or {}).get("prompt_tokens"),
             "downstream_completion_tokens": (row.get("downstream_usage") or {}).get("completion_tokens"),
             "downstream_cost_usd": row.get("downstream_cost_usd"),
+            "downstream_completion_response_reported_cost_usd": row.get("downstream_completion_response_reported_cost_usd"),
             "modelsync_total_cost_usd": row.get("modelsync_total_cost_usd"),
+            "modelsync_total_completion_response_reported_cost_usd": row.get("modelsync_total_completion_response_reported_cost_usd"),
             "status": row.get("status"), "router_http_status": row.get("router_http_status"),
         })
     save_csv(run_dir / "paired_cost_results.csv", flat)
