@@ -348,3 +348,94 @@ def test_openrouter_credentials_override_stale_generic_upstream_url():
         upstream_base_url="https://legacy-provider.example/v1",
     )
     assert settings.effective_base_url == "https://openrouter.ai/api/v1"
+
+
+
+def test_classifier_default_output_budget_is_configurable_and_sent_to_provider():
+    from app.providers.together import TogetherProvider
+
+    settings = Settings(openrouter_router_api_key="test-router-key")
+    provider = TogetherProvider(settings)
+    response_data = {
+        "id": "gen-classifier-budget-default",
+        "model": "z-ai/glm-5.3-flash",
+        "choices": [{"message": {"role": "assistant", "content": "UNIT_TESTING"}}],
+        "usage": {"prompt_tokens": 20, "completion_tokens": 2, "total_tokens": 22},
+    }
+    provider.client.chat.completions.create = AsyncMock(
+        return_value=SimpleNamespace(model_dump=lambda: response_data)
+    )
+
+    metadata = asyncio.run(
+        provider.classify_with_metadata("z-ai/glm-5.3-flash", "write a pytest suite")
+    )
+
+    assert settings.classifier_max_output_tokens == 128
+    assert metadata["category"] == "UNIT_TESTING"
+    assert provider.client.chat.completions.create.await_args.kwargs["max_tokens"] == 128
+
+
+def test_downstream_rate_limit_is_returned_as_http_429_with_retry_after():
+    import httpx
+    from fastapi import HTTPException
+    from openai import RateLimitError
+    from app.providers.together import TogetherProvider
+
+    provider = TogetherProvider(Settings(openrouter_router_api_key="test-router-key"))
+    response = httpx.Response(
+        429,
+        request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"),
+        headers={"retry-after": "3"},
+    )
+    error = RateLimitError(
+        "Provider returned error",
+        response=response,
+        body={"error": {"message": "Provider returned error", "code": 429}},
+    )
+    provider.client.chat.completions.create = AsyncMock(side_effect=error)
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(provider.complete(
+            "openai/gpt-5.6-luna",
+            [{"role": "user", "content": "Explain this problem"}],
+            max_tokens=32,
+        ))
+
+    assert caught.value.status_code == 429
+    assert caught.value.headers == {"Retry-After": "3"}
+    assert "upstream_rate_limit" in caught.value.detail
+
+
+def test_streaming_downstream_rate_limit_is_returned_as_http_429():
+    import httpx
+    from fastapi import HTTPException
+    from openai import RateLimitError
+    from app.providers.together import TogetherProvider
+
+    provider = TogetherProvider(Settings(openrouter_router_api_key="test-router-key"))
+    response = httpx.Response(
+        429,
+        request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"),
+        headers={"retry-after": "5"},
+    )
+    error = RateLimitError(
+        "Provider returned error",
+        response=response,
+        body={"error": {"message": "Provider returned error", "code": 429}},
+    )
+    provider.client.chat.completions.create = AsyncMock(side_effect=error)
+
+    async def consume_stream():
+        async for _chunk in provider.stream_complete(
+            "openai/gpt-5.6-luna",
+            [{"role": "user", "content": "Explain this problem"}],
+            max_tokens=32,
+        ):
+            pass
+
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(consume_stream())
+
+    assert caught.value.status_code == 429
+    assert caught.value.headers == {"Retry-After": "5"}
+    assert "upstream_rate_limit" in caught.value.detail
