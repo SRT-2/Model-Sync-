@@ -155,6 +155,23 @@ class TogetherProvider(LLMProvider):
                 detail=f"upstream_connection_error: Unable to connect to upstream provider: {exc}",
             ) from exc
         except APIError as exc:
+            upstream_status = getattr(exc, "status_code", None)
+            if upstream_status == 429:
+                response = getattr(exc, "response", None)
+                retry_after = (
+                    response.headers.get("retry-after")
+                    if response is not None and response.headers is not None else None
+                )
+                error_body = getattr(exc, "body", None)
+                logger.warning(
+                    "Upstream rate limit: %s; retry_after=%s; body=%s",
+                    exc.message, retry_after, error_body,
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"upstream_rate_limit: {exc.message}",
+                    headers={"Retry-After": retry_after} if retry_after else None,
+                ) from exc
             logger.error("Upstream API error: %s", exc)
             raise HTTPException(
                 status_code=502,
@@ -195,8 +212,31 @@ class TogetherProvider(LLMProvider):
                 status_code=502,
                 detail=f"bad_upstream_api_key: Upstream provider rejected the API key: {exc.message}",
             ) from exc
-        except (APITimeoutError, APIConnectionError, APIError) as exc:
-            logger.error("Upstream error during stream: %s", exc)
+        except APIError as exc:
+            upstream_status = getattr(exc, "status_code", None)
+            if upstream_status == 429:
+                response = getattr(exc, "response", None)
+                retry_after = (
+                    response.headers.get("retry-after")
+                    if response is not None and response.headers is not None else None
+                )
+                error_body = getattr(exc, "body", None)
+                logger.warning(
+                    "Upstream rate limit during stream: %s; retry_after=%s; body=%s",
+                    exc.message, retry_after, error_body,
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"upstream_rate_limit: {exc.message}",
+                    headers={"Retry-After": retry_after} if retry_after else None,
+                ) from exc
+            logger.error("Upstream API error during stream: %s", exc)
+            raise HTTPException(
+                status_code=502,
+                detail=f"upstream_stream_error: {str(exc)}",
+            ) from exc
+        except (APITimeoutError, APIConnectionError) as exc:
+            logger.error("Upstream connection error during stream: %s", exc)
             raise HTTPException(
                 status_code=502,
                 detail=f"upstream_stream_error: {str(exc)}",
