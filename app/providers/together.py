@@ -49,7 +49,7 @@ class TogetherProvider(LLMProvider):
                 model=classifier_model,
                 messages=messages,
                 temperature=0.0,
-                max_tokens=20,
+                max_tokens=self.settings.classifier_max_output_tokens,
                 extra_body={
                     "usage": {"include": True},
                     "provider": {"allow_fallbacks": self.settings.openrouter_allow_fallbacks},
