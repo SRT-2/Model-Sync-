@@ -257,3 +257,31 @@ def test_deferred_paired_costs_report_savings_only_after_all_240_records_reconci
     assert summary["modelsync_downstream_actual_cost_usd"] == pytest.approx(1.6)
     assert summary["modelsync_total_actual_cost_usd"] == pytest.approx(2.4)
     assert summary["actual_savings_percentage"] == pytest.approx(70.0)
+
+
+def test_live_reconcile_keeps_response_cost_provisional_until_metadata_arrives(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+    import benchmarks.live_test_suite_v2 as live_suite
+
+    async def pending_lookup(*args, **kwargs):
+        return {
+            "status": "reconciliation_failed",
+            "error": "HTTP 404",
+            "record": None,
+        }
+
+    monkeypatch.setattr(live_suite, "reconcile_generation", pending_lookup)
+
+    class FakeClient:
+        pass
+
+    result = asyncio.run(live_suite.reconcile(
+        FakeClient(), tmp_path, "gen-pending", "P001", "classifier",
+        {"prompt_tokens": 10, "completion_tokens": 2, "cost": 0.004},
+    ))
+
+    assert result["reconciliation_status"] == "reconciliation_failed"
+    assert result["actual_cost_usd"] is None
+    assert result["completion_response_reported_cost_usd"] == pytest.approx(0.004)
