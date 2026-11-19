@@ -30,7 +30,7 @@
     "temperature": 0,
     "max_output_tokens": 500,
     "classifier_temperature": 0,
-    "classifier_max_output_tokens": 20,
+    "classifier_max_output_tokens": 128,
     "include_usage": true
   },
   "execution": {
