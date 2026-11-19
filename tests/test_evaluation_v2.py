@@ -57,7 +57,7 @@ def test_invalid_classifier_output_counts_as_incorrect() -> None:
     ]
     metrics = extract_classifier_metrics(records)
     assert metrics["correct_predictions"] == 2
-    assert metrics["accuracy"] == pytest.approx(2 / 3)
+    assert metrics["accuracy"] == pytest.approx(round(2 / 3, 4))
     assert metrics["invalid_classifier_outputs"] == 1
 
 
