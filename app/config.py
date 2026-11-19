@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     classifier_model: str = Field(
         default="z-ai/glm-5.3-flash", alias="CLASSIFIER_MODEL"
     )
+    # Reasoning-capable classifier models may consume output tokens internally
+    # before returning the category label. Keep this limit configurable.
+    classifier_max_output_tokens: int = Field(
+        default=128, alias="CLASSIFIER_MAX_OUTPUT_TOKENS"
+    )
 
     @property
     def effective_api_key(self) -> Optional[str]:
