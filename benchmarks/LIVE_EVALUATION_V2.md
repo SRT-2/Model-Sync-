@@ -26,6 +26,7 @@ UPSTREAM_MAX_RETRIES=0
 ROUTER_API_KEY=optional_inbound_router_auth_token
 
 CLASSIFIER_MODEL=z-ai/glm-5.3-flash
+CLASSIFIER_MAX_OUTPUT_TOKENS=128
 CODING_MODEL=deepseek/deepseek-v4.1-flash-1017
 TESTING_MODEL=deepseek/deepseek-v4-flash-0731
 REASONING_MODEL=openai/gpt-5.6-luna
