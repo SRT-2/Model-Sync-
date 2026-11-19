@@ -4,6 +4,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pytest
+
 from benchmarks.live_test_suite_v2 import markdown_report, save_csv, stem
 
 
