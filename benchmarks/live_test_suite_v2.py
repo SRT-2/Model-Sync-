@@ -932,6 +932,19 @@ async def connectivity_tests(
     return results
 
 
+def _format_usd(value: Any) -> str:
+    """Display small API charges without hiding micro-dollar values."""
+    if value is None:
+        return "Not run"
+    return f"${float(value):.8f}"
+
+
+def _format_percentage(value: Any) -> str:
+    if value is None:
+        return "Not reportable"
+    return f"{float(value):.2f}%"
+
+
 def markdown_report(run_id: str, summary: Dict[str, Any]) -> str:
     paired = summary.get("paired_cost_comparison") or {}
     lines = [
@@ -948,11 +961,11 @@ def markdown_report(run_id: str, summary: Dict[str, Any]) -> str:
         "|---|---:|",
         f"| Prompts compared | {paired.get('prompts_compared', 'Not run')} |",
         f"| Comparison complete | {paired.get('comparison_complete', 'Not run')} |",
-        f"| Baseline actual cost (USD) | {paired.get('baseline_actual_cost_usd', 'Not run')} |",
-        f"| ModelSync classifier cost (USD) | {paired.get('modelsync_classifier_actual_cost_usd', 'Not run')} |",
-        f"| ModelSync downstream cost (USD) | {paired.get('modelsync_downstream_actual_cost_usd', 'Not run')} |",
-        f"| ModelSync total cost (USD) | {paired.get('modelsync_total_actual_cost_usd', 'Not run')} |",
-        f"| Actual savings (%) | {paired.get('actual_savings_percentage', 'Not reportable')} |",
+        f"| Baseline actual cost (USD) | {_format_usd(paired.get('baseline_actual_cost_usd'))} |",
+        f"| ModelSync classifier cost (USD) | {_format_usd(paired.get('modelsync_classifier_actual_cost_usd'))} |",
+        f"| ModelSync downstream cost (USD) | {_format_usd(paired.get('modelsync_downstream_actual_cost_usd'))} |",
+        f"| ModelSync total cost (USD) | {_format_usd(paired.get('modelsync_total_actual_cost_usd'))} |",
+        f"| Actual savings | {_format_percentage(paired.get('actual_savings_percentage'))} |",
         "",
         "Savings is only reportable when all 80 paired prompts complete successfully and all baseline, classifier and downstream generation costs are reconciled.",
         "",
