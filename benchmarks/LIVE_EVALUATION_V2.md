@@ -105,11 +105,19 @@ Wait until Uvicorn reports that it is running on `http://127.0.0.1:8000`. Keep t
 
 Open Terminal 2 at the repository root, activate the same virtual environment, and run the phases individually. Each phase creates its own evidence run directory.
 
-Direct connectivity check for all five configured model roles (five short completions):
+Direct connectivity check for all five configured model roles (five short completions; the probe allows enough output tokens for reasoning models):
 
 ```powershell
 python -m benchmarks.live_test_suite_v2 --phase connectivity --live --i-understand-paid-calls
 ```
+
+OpenRouter generation metadata can become available later than the completion response. The live harness records the completion response's `usage.cost` immediately and makes one non-blocking metadata lookup. It does not stop the paired experiment just because a generation record is not yet visible. After a run, reconcile the generation records with metadata-only GET requests:
+
+```powershell
+python -m benchmarks.reconcile_live_run_v2 --run-dir "testing-results/live_evaluation_v2/<run_id>"
+```
+
+Replace `<run_id>` with the exact run folder name printed by the harness. This command makes no inference requests. If some records still return 404, wait and run the same command again. The savings percentage remains unavailable until all 240 generation records for the paired experiment have been reconciled.
 
 Live FastAPI endpoint checks, one real request per routing category plus health, models, validation and configured inbound-auth checks:
 
