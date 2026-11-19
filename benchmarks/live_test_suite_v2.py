@@ -465,14 +465,29 @@ async def paired_cost_comparison(
         "prompts_expected": len(dataset), "prompts_compared": len(rows),
         "comparison_complete": complete, "stop_reason": stop_reason,
         "baseline_model": models["baseline"], "modelsync_models": models,
-        "baseline_actual_cost_usd": round(baseline_total, 10),
-        "modelsync_classifier_actual_cost_usd": round(
-            sum(float(row["classifier_cost_usd"]) for row in rows
-                if row.get("classifier_cost_usd") is not None), 10),
-        "modelsync_downstream_actual_cost_usd": round(
-            sum(float(row["downstream_cost_usd"]) for row in rows
-                if row.get("downstream_cost_usd") is not None), 10),
-        "modelsync_total_actual_cost_usd": round(router_total, 10),
+        # Do not label interim completion-response usage.cost values as final
+        # actual totals. Final actual totals are published by the deferred
+        # reconciler only after all 240 OpenRouter generation records are found.
+        "baseline_actual_cost_usd": round(baseline_total, 10) if complete else None,
+        "modelsync_classifier_actual_cost_usd": (
+            round(sum(float(row["classifier_cost_usd"]) for row in rows
+                      if row.get("classifier_cost_usd") is not None), 10)
+            if complete else None
+        ),
+        "modelsync_downstream_actual_cost_usd": (
+            round(sum(float(row["downstream_cost_usd"]) for row in rows
+                      if row.get("downstream_cost_usd") is not None), 10)
+            if complete else None
+        ),
+        "modelsync_total_actual_cost_usd": round(router_total, 10) if complete else None,
+        "completion_response_reported_costs_provisional_usd": {
+            "baseline": round(sum(float((row.get("baseline_usage") or {}).get("cost", 0) or 0)
+                                  for row in rows), 10),
+            "classifier": round(sum(float((row.get("classifier_usage") or {}).get("cost", 0) or 0)
+                                    for row in rows), 10),
+            "downstream": round(sum(float((row.get("downstream_usage") or {}).get("cost", 0) or 0)
+                                    for row in rows), 10),
+        },
         "actual_savings_percentage": savings,
         "actual_costs_complete": complete,
         "classifier_cost_included": True,
