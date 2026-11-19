@@ -307,6 +307,33 @@ def test_openrouter_classifier_metadata_captures_generation_usage_and_raw_output
         "usage": {"include": True},
         "provider": {"allow_fallbacks": False},
     }
+    assert provider.client.chat.completions.create.await_args.kwargs["max_tokens"] == 128
+
+
+def test_classifier_max_output_tokens_can_be_configured():
+    from app.providers.together import TogetherProvider
+
+    settings = Settings(
+        openrouter_router_api_key="test-router-key",
+        classifier_max_output_tokens=96,
+    )
+    provider = TogetherProvider(settings)
+    response_data = {
+        "id": "gen-classifier-budget-test",
+        "model": "z-ai/glm-5.3-flash",
+        "choices": [{"message": {"role": "assistant", "content": "UNIT_TESTING"}}],
+        "usage": {"prompt_tokens": 20, "completion_tokens": 2, "total_tokens": 22},
+    }
+    provider.client.chat.completions.create = AsyncMock(
+        return_value=SimpleNamespace(model_dump=lambda: response_data)
+    )
+
+    metadata = asyncio.run(
+        provider.classify_with_metadata("z-ai/glm-5.3-flash", "write unit tests")
+    )
+
+    assert metadata["category"] == "UNIT_TESTING"
+    assert provider.client.chat.completions.create.await_args.kwargs["max_tokens"] == 96
 
 def test_dedicated_openrouter_router_key_selects_openrouter_base_url():
     settings = Settings(
